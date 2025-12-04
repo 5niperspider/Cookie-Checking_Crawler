@@ -1,10 +1,8 @@
 import { Module } from '@nestjs/common';
-import { SessionsController } from './sessions/sessions.controller';
-import { SessionsService } from './sessions/sessions.service';
+import { CookiesModule } from './cookies/cookies.module';
+import { SessionsModul } from './sessions/sessions.module';
 
 @Module({
-  imports: [],
-  controllers: [SessionsController],
-  providers: [SessionsService],
+  imports: [CookiesModule, SessionsModul],
 })
 export class AppModule {}

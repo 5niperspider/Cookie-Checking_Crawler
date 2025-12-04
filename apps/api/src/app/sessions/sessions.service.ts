@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Session } from './interfaces/session.interface';
 import { randomUUID } from 'node:crypto';
 import { CreateSessionDto } from './dto/create-session.dto';
+import { ISession } from '@cccrawler/util';
 
 @Injectable()
 export class SessionsService {
-    private readonly sessions: Session[] = [];
+    private readonly sessions: ISession[] = [];
 
   create(msg: CreateSessionDto) {
     if(!msg.url) {
@@ -22,11 +22,11 @@ export class SessionsService {
     return newSession;
   }
 
-  getSessions(): { sessions: Session[] } {
+  getSessions(): { sessions: ISession[] } {
     return { sessions: this.sessions };
   }
 
-  getSessionById(sessionId: string): { session: Session } | undefined {
+  getSessionById(sessionId: string): { session: ISession } | undefined {
     const session = this.sessions.find(s => s.id === sessionId);
     return {session: session};
   }

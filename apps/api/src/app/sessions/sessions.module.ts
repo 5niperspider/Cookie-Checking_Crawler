@@ -7,4 +7,4 @@ import { SessionsService } from './sessions.service';
   controllers: [SessionsController],
   providers: [SessionsService],
 })
-export class SessionModul {}
+export class SessionsModul {}
