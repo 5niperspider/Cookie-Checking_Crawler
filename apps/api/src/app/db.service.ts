@@ -21,6 +21,13 @@ export interface NewSession {
     configId: number;
 }
 
+export interface NewConfig {
+    browser: 'chrome' | 'firefox' | 'brave';
+    cookies: 'yes' | 'no' | 'opt';
+    js: boolean;
+    adBlocker: boolean;
+}
+
 @Injectable()
 export class DbService implements OnModuleDestroy {
     private pool: Pool;
@@ -129,7 +136,7 @@ export class DbService implements OnModuleDestroy {
         ];
 
         const { rows } = await this.query(sql, params);
-        return rows[0]; 
+        return rows[0];
     }
 
     // neuer Session Eintrag
@@ -137,11 +144,11 @@ export class DbService implements OnModuleDestroy {
         curl -X POST \
         -H "Content-Type: application/json" \
         -d '{
-            "url": "https://neue-website.de",
+            "url": "https://new-news-page.net",
             "category": "news",
-            "configId": 2
+            "configId": 3 
             }' \
-        "http://localhost:3000/api/sessions"
+        "http://localhost:3000/api/sessions/sessions"
     */
     async createSession(sessionData: NewSession) {
         const sql = `
@@ -160,7 +167,41 @@ export class DbService implements OnModuleDestroy {
         ];
 
         const { rows } = await this.query(sql, params);
-        return rows[0]; 
+        return rows[0];
+    }
+
+    /*
+    TEST - PRÜFT NCIHT OB CONFIG SCHON VORHANDEN IST!
+    curl -X POST \
+        -H "Content-Type: application/json" \
+        -d '{
+            "browser": "firefox",
+            "cookies": "no",
+            "js": false,
+            "adBlocker": true
+            }' \
+        "http://localhost:3000/api/sessions/config"
+    */ 
+    async createConfig(configData: NewConfig) {
+        const sql = `
+            INSERT INTO config (
+                browser,
+                cookies,
+                js,
+                ad_blocker
+            )
+            VALUES ($1, $2, $3, $4)
+            RETURNING *;
+        `;
+        const params = [
+            configData.browser,
+            configData.cookies,
+            configData.js,
+            configData.adBlocker,
+        ];
+
+        const { rows } = await this.query(sql, params);
+        return rows[0];
     }
 }
 
