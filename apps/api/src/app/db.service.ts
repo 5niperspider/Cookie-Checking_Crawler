@@ -15,6 +15,12 @@ export interface NewCookie {
     location?: 'cookie' | 'indexDB' | 'localStorage';
 }
 
+export interface NewSession {
+    url: string;
+    category?: string;
+    configId: number;
+}
+
 @Injectable()
 export class DbService implements OnModuleDestroy {
     private pool: Pool;
@@ -77,7 +83,7 @@ export class DbService implements OnModuleDestroy {
         return rows;
     }
 
-    // neuen Cookie Eintrag erstellen
+    // POST neuen Cookie Eintrag erstellen
     /* Test
         curl -X POST \
             -H "Content-Type: application/json" \
@@ -123,7 +129,38 @@ export class DbService implements OnModuleDestroy {
         ];
 
         const { rows } = await this.query(sql, params);
-        return rows[0]; // Gibt den erstellten Datensatz zurück
+        return rows[0]; 
+    }
+
+    // neuer Session Eintrag
+    /* Test
+        curl -X POST \
+        -H "Content-Type: application/json" \
+        -d '{
+            "url": "https://neue-website.de",
+            "category": "news",
+            "configId": 2
+            }' \
+        "http://localhost:3000/api/sessions"
+    */
+    async createSession(sessionData: NewSession) {
+        const sql = `
+            INSERT INTO session (
+                url,
+                category,
+                config_id
+            )
+            VALUES ($1, $2, $3)
+            RETURNING *;
+        `;
+        const params = [
+            sessionData.url,
+            sessionData.category || null,
+            sessionData.configId,
+        ];
+
+        const { rows } = await this.query(sql, params);
+        return rows[0]; 
     }
 }
 

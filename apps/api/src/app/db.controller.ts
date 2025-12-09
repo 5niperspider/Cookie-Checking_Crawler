@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Post, Body } from '@nestjs/common';
-import { DbService, NewCookie } from './db.service';
+import { DbService, NewCookie, NewSession } from './db.service';
 
 @Controller('sessions')
 export class DbController {
@@ -24,6 +24,11 @@ export class DbController {
     createCookie(@Body() cookieData: NewCookie) {
         // 'sessionId' wird als Teil des Body erwartet
         return this.db.createCookie(cookieData);
+    }
+
+    @Post()
+    createSession(@Body() sessionData: NewSession) {
+        return this.db.createSession(sessionData);
     }
 
 
