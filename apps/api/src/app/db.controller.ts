@@ -1,0 +1,31 @@
+import { Controller, Get, Param, Post, Body } from '@nestjs/common';
+import { DbService, NewCookie } from './db.service';
+
+@Controller('sessions')
+export class DbController {
+    constructor(private readonly db: DbService) { }
+
+    @Get('cookies/by-config/:configId')
+    getCookiesForConfig(@Param('configId') configId: string) {
+        return this.db.getCookiesForConfig(Number(configId));
+    }
+
+    @Get('cookies/by-url/:urlPart')
+    getCookiesForUrl(@Param('urlPart') urlPart: string) {
+        return this.db.getCookiesForUrl(urlPart);
+    }
+
+    @Get(':id/cookies')
+    getCookiesForSession(@Param('id') id: string) {
+        return this.db.getCookiesForSession(Number(id));
+    }
+
+    @Post('cookies')
+    createCookie(@Body() cookieData: NewCookie) {
+        // 'sessionId' wird als Teil des Body erwartet
+        return this.db.createCookie(cookieData);
+    }
+
+
+
+}
