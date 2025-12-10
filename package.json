@@ -2,7 +2,11 @@
   "name": "@cccrawler/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "db:init": "dotenv -e .env -- docker compose up -d db && sleep 5 && dotenv -e .env -- docker exec -i cookie-db psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -f /docker-entrypoint-initdb.d/init.sql",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
   "private": true,
   "dependencies": {
     "@angular/common": "~20.3.0",
@@ -51,6 +55,7 @@
     "@types/pg": "^8.15.6",
     "@typescript-eslint/utils": "^8.40.0",
     "angular-eslint": "^20.3.0",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
     "jest": "^30.0.2",

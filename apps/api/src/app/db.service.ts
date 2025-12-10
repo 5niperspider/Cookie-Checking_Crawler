@@ -91,6 +91,7 @@ export class DbService implements OnModuleDestroy {
     }
 
     // Alle URLs zu einer Session-ID
+    // Test curl "http://localhost:3000/api/sessions/2/urls"
     async getUrlsForSession(sessionId: number) {
         const sql = `
             SELECT url
@@ -98,8 +99,23 @@ export class DbService implements OnModuleDestroy {
             WHERE id = $1;
         `;
         const { rows } = await this.query<{ url: string }>(sql, [sessionId]);
+        return rows;
+    }
+
+    // Alle Session-IDs für eine gegebene config_id
+    // Test curl "http://localhost:3000/api/sessions/by-config/2"
+    async getSessionIdsForConfig(configId: number) {
+        const sql = `
+            SELECT id
+            FROM session
+            WHERE config_id = $1
+            ORDER BY id ASC;
+        `;
+        const { rows } = await this.query<{ id: number }>(sql, [configId]);
         return rows; 
     }
+
+
 
     // POST neuen Cookie Eintrag erstellen
     /* Test

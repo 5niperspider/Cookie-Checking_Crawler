@@ -25,6 +25,11 @@ export class DbController {
         return this.db.getUrlsForSession(Number(id));
     }
 
+    @Get('by-config/:configId')
+    getSessionIdsForConfig(@Param('configId') configId: string) {
+        return this.db.getSessionIdsForConfig(Number(configId));
+    }
+
     @Post('cookies')
     createCookie(@Body() cookieData: NewCookie) {
         // 'sessionId' wird als Teil des Body erwartet
