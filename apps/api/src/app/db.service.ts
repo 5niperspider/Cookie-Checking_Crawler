@@ -90,6 +90,17 @@ export class DbService implements OnModuleDestroy {
         return rows;
     }
 
+    // Alle URLs zu einer Session-ID
+    async getUrlsForSession(sessionId: number) {
+        const sql = `
+            SELECT url
+            FROM session
+            WHERE id = $1;
+        `;
+        const { rows } = await this.query<{ url: string }>(sql, [sessionId]);
+        return rows; 
+    }
+
     // POST neuen Cookie Eintrag erstellen
     /* Test
         curl -X POST \
@@ -181,7 +192,7 @@ export class DbService implements OnModuleDestroy {
             "adBlocker": true
             }' \
         "http://localhost:3000/api/sessions/config"
-    */ 
+    */
     async createConfig(configData: NewConfig) {
         const sql = `
             INSERT INTO config (
