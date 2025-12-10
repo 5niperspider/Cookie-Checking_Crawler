@@ -2,7 +2,11 @@
   "name": "@cccrawler/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "db:init": "dotenv -e .env -- docker compose up -d db && sleep 5 && dotenv -e .env -- docker exec -i cookie-db psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -f /docker-entrypoint-initdb.d/init.sql",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
   "private": true,
   "dependencies": {
     "@angular/common": "~20.3.0",
@@ -16,11 +20,11 @@
     "@nestjs/platform-express": "^11.0.0",
     "@tailwindcss/postcss": "^4.1.17",
     "axios": "^1.6.0",
+    "pg": "^8.16.3",
     "postcss": "^8.5.6",
     "puppeteer": "^24.32.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "~7.8.0",
-    "tailwindcss": "^4.1.17",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
@@ -49,8 +53,10 @@
     "@swc/helpers": "~0.5.11",
     "@types/jest": "^30.0.0",
     "@types/node": "20.19.9",
+    "@types/pg": "^8.15.6",
     "@typescript-eslint/utils": "^8.40.0",
     "angular-eslint": "^20.3.0",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
     "jest": "^30.0.2",
