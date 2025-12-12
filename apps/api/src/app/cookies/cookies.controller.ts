@@ -6,7 +6,7 @@ import { DbService } from '../db/db.service';
 export class CookiesController {
     constructor(
         private readonly cookiesService: CookiesService,
-        private readonly db: DbService
+        private readonly dbService: DbService
     ) { }
 
     @Get()
@@ -16,11 +16,11 @@ export class CookiesController {
 
     @Get('/by-config/:configId')
     getCookiesForConfig(@Param('configId') configId: string) {
-        return this.db.getCookiesForConfig(Number(configId));
+        return this.dbService.getCookiesForConfig(Number(configId));
     }
 
     @Get('/by-url/:urlPart')
     getCookiesForUrl(@Param('urlPart') urlPart: string) {
-        return this.db.getCookiesForUrl(urlPart);
+        return this.dbService.getCookiesForUrl(urlPart);
     }
 }
