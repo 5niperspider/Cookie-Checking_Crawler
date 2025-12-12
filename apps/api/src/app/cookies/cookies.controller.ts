@@ -14,6 +14,11 @@ export class CookiesController {
         return this.cookiesService.getCookies();
     }
 
+    @Get('/by-session/:sessionId')
+    getCookiesForSession(@Param('sessionId') sessionId: string) {
+        return this.dbService.getCookiesForSession(Number(sessionId));
+    }
+
     @Get('/by-config/:configId')
     getCookiesForConfig(@Param('configId') configId: string) {
         return this.dbService.getCookiesForConfig(Number(configId));
