@@ -15,6 +15,6 @@ export class AppController {
 
   @Post()
   async create(@Body() message:{URL:string}) {
-    return this.crawlerService.crawler(message.URL);
+    return this.crawlerService.crawler(message.URL , 1);
 }
 }
