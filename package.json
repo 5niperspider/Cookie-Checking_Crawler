@@ -5,7 +5,10 @@
   "scripts": {
     "db:init": "dotenv -e .env -- docker compose up -d db && sleep 5 && dotenv -e .env -- docker exec -i cookie-db psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -f /docker-entrypoint-initdb.d/init.sql",
     "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "start:backend": "nx serve api",
+    "start:frontend": "nx serve frontend",
+    "start": "npm run docker:up && concurrently \"npm run start:backend\" \"npm run start:frontend\"; npm run docker:down"
   },
   "private": true,
   "dependencies": {
@@ -57,6 +60,7 @@
     "@types/pg": "^8.15.6",
     "@typescript-eslint/utils": "^8.40.0",
     "angular-eslint": "^20.3.0",
+    "concurrently": "^9.2.1",
     "dotenv-cli": "^11.0.0",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",

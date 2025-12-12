@@ -39,6 +39,11 @@ export class SessionsController {
     }
   }
 
+  @Get('status/:id')
+  getStatus(@Param('id') id: string) {
+    return this.schedulerService.getStatus(id);
+  }
+
   @Get()
   getSessions() {
     return this.sessionsService.getSessions();
