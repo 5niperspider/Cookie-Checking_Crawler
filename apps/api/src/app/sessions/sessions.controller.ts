@@ -10,18 +10,21 @@ import {
 import { SessionsService } from './sessions.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { DbService } from '../db/db.service';
+import { SchedulerService } from '../scheduler/scheduler.service';
 
 @Controller('sessions')
 export class SessionsController {
   constructor(
     private readonly sessionsService: SessionsService,
-    private readonly db: DbService,
+    private readonly dbService: DbService,
+    private readonly schedulerService: SchedulerService,
   ) { }
 
   @Post()
-  async create(@Body() createSessionDto: CreateSessionDto) {
+  async create(@Body() sessionTask: CreateSessionDto) {
     try {
-      return this.sessionsService.create(createSessionDto);
+
+      return this.schedulerService.addTask(sessionTask);
     } catch (error) {
       throw new HttpException(
         {
@@ -49,6 +52,6 @@ export class SessionsController {
 
   @Get('by-config/:configId')
   getSessionIdsForConfig(@Param('configId') configId: string) {
-    return this.db.getSessionIdsForConfig(Number(configId));
+    return this.dbService.getSessionIdsForConfig(Number(configId));
   }
 }
