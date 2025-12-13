@@ -21,11 +21,27 @@ export interface NewSession {
     configId: number;
 }
 
+export interface Session {
+    id: number;
+    url: string;
+    category: string | null;
+    created_at: Date;
+    config_id: number | null;
+}
+
 export interface NewConfig {
     browser: 'chrome' | 'firefox' | 'brave';
     cookies: 'yes' | 'no' | 'opt';
     js: boolean;
     adBlocker: boolean;
+}
+
+export interface Config {
+    id: number;
+    browser: 'chrome' | 'firefox' | 'brave';
+    cookies: 'yes' | 'no' | 'opt';
+    js: boolean;
+    ad_blocker: boolean;
 }
 
 @Injectable()
@@ -112,9 +128,44 @@ export class DbService implements OnModuleDestroy {
             ORDER BY id ASC;
         `;
         const { rows } = await this.query<{ id: number }>(sql, [configId]);
-        return rows; 
+        return rows;
     }
 
+    // Test curl "http://localhost:3000/api/sessions/2"
+    async getSessionById(id: number) {
+        const sql = `
+            SELECT *
+            FROM session
+            WHERE id = $1
+            LIMIT 1;
+        `;
+        const { rows } = await this.query<Session>(sql, [id]);
+        return rows[0] ?? null;
+    }
+
+
+    // Test curl "http://localhost:3000/api/sessions"
+    async getAllSessions() {
+        const sql = `
+            SELECT *
+            FROM session
+            ORDER BY id ASC;
+        `;
+        const { rows } = await this.query<Session>(sql, []);
+        return rows;
+    }
+
+    // Test curl "http://localhost:3000/api/sessions/configs/2"
+    async getConfigById(id: number) {
+    const sql = `
+        SELECT *
+        FROM config
+        WHERE id = $1
+        LIMIT 1;
+    `;
+    const { rows } = await this.query<Config>(sql, [id]);
+    return rows[0] ?? null;
+    }
 
 
     // POST neuen Cookie Eintrag erstellen
