@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { DbService } from './db.service';
-import { DbController } from './db.controller';
+import { CookiesModule } from './cookies/cookies.module';
+import { SessionsModul } from './sessions/sessions.module';
+import { DbService } from './db/db.service';
+import { SchedulerService } from './scheduler/scheduler.service';
 
 @Module({
-  imports: [],
-  controllers: [AppController, DbController],
-  providers: [AppService, DbService],
+  imports: [CookiesModule, SessionsModul],
+  controllers: [],
+  providers: [DbService, SchedulerService],
 })
 export class AppModule {}
