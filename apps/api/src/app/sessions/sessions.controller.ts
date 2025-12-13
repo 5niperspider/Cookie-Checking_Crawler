@@ -7,7 +7,6 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { SessionsService } from './sessions.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { DbService } from '../db/db.service';
 import { SchedulerService } from '../scheduler/scheduler.service';
@@ -15,7 +14,6 @@ import { SchedulerService } from '../scheduler/scheduler.service';
 @Controller('sessions')
 export class SessionsController {
   constructor(
-    private readonly sessionsService: SessionsService,
     private readonly dbService: DbService,
     private readonly schedulerService: SchedulerService,
   ) { }
@@ -46,17 +44,21 @@ export class SessionsController {
 
   @Get()
   getSessions() {
-    return this.sessionsService.getSessions();
+    return this.dbService.getAllSessions();
   }
 
-  //tbd
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.sessionsService.getSessionById(id);
+  findOne(@Param('id') id: number) {
+    return this.dbService.getSessionById(id);
   }
 
   @Get('by-config/:configId')
   getSessionIdsForConfig(@Param('configId') configId: string) {
     return this.dbService.getSessionIdsForConfig(Number(configId));
+  }
+
+  @Get('/config/:id')
+  getConfigbyId(@Param('id') id: number) {
+    return this.dbService.getConfigById(id);
   }
 }
