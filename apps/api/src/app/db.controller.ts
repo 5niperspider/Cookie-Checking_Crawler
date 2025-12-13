@@ -30,21 +30,6 @@ export class DbController {
         return this.db.getSessionIdsForConfig(Number(configId));
     }
 
-    @Get(':id')
-    getSessionById(@Param('id') id: string) {
-        return this.db.getSessionById(Number(id));
-    }
-
-    @Get()
-    getAllSessions() {
-        return this.db.getAllSessions();
-    }
-
-    @Get('configs/:id')
-    getConfigById(@Param('id') id: string) {
-        return this.db.getConfigById(Number(id));
-    }
-
     @Post('cookies')
     createCookie(@Body() cookieData: NewCookie) {
         // 'sessionId' wird als Teil des Body erwartet
