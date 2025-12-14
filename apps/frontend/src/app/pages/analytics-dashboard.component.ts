@@ -171,6 +171,7 @@ export class AnalyticsDashboardComponent implements OnInit {
   selectedSessionId = '';
   stats: any = null;
   loading = false;
+  error: string | null = null;
 
   constructor(private cookieService: CookieService) {}
 
