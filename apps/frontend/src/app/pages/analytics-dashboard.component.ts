@@ -173,11 +173,10 @@ export class AnalyticsDashboardComponent implements OnInit {
   loading = false;
   error: string | null = null;
 
-  constructor(private cookieService: CookieService) {}
+  constructor(private cookieService: CookieService) { }
 
   ngOnInit() {
     this.loadSessions();
-    this.loadMockStats();
   }
 
   loadSessions() {
@@ -186,18 +185,17 @@ export class AnalyticsDashboardComponent implements OnInit {
       next: (sessions) => {
         this.sessions = sessions;
         this.loading = false;
+
+        // Auto-select first session if available
+        if (sessions.length > 0) {
+          this.selectedSessionId = sessions[0].id;
+          this.onSessionChange();
+        }
       },
       error: (err) => {
-        console.warn('Could not load sessions (API not ready), using mock data', err);
+        console.error('Could not load sessions', err);
+        this.error = 'Failed to load sessions. Please ensure backend is running.';
         this.loading = false;
-      },
-    });
-  }
-
-  loadMockStats() {
-    this.cookieService.getMockStats().subscribe({
-      next: (stats) => {
-        this.stats = stats;
       },
     });
   }
@@ -210,11 +208,11 @@ export class AnalyticsDashboardComponent implements OnInit {
         },
         error: (err) => {
           console.error('Error loading stats', err);
-          this.loadMockStats();
+          this.error = 'Failed to load stats for the selected session.';
         },
       });
     } else {
-      this.loadMockStats();
+      this.stats = null;
     }
   }
 }

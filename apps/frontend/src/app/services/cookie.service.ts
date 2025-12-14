@@ -31,7 +31,7 @@ export interface CrawlSession {
   cookieBannerHandled: boolean;
   adBlockerEnabled: boolean;
   createdAt: string;
-  cookies: Cookie[];
+  cookies?: Cookie[];
 }
 
 @Injectable({
@@ -40,7 +40,7 @@ export interface CrawlSession {
 export class CookieService {
   private apiUrl = 'http://localhost:3000/api';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   /**
    * Fetch all crawl sessions
@@ -82,34 +82,10 @@ export class CookieService {
   /**
    * Get aggregated cookie statistics
    */
-  getStats(sessionId?: string): Observable<CookieStats> {
-    const url = sessionId
-      ? `${this.apiUrl}/stats/${sessionId}`
-      : `${this.apiUrl}/stats`;
-    return this.http.get<CookieStats>(url);
-  }
-
   /**
-   * Get mock data for development (remove once API is ready)
+   * Get aggregated cookie statistics
    */
-  getMockStats(): Observable<CookieStats> {
-    return of({
-      totalCookies: 42,
-      thirdPartyCookies: 28,
-      trackingCookies: 22,
-      firstPartyCookies: 14,
-      byDomain: {
-        'example.com': 12,
-        'google.com': 8,
-        'facebook.com': 6,
-        'doubleclick.net': 5,
-        'other': 11,
-      },
-      byBrowser: {
-        Chrome: 35,
-        Firefox: 28,
-        Safari: 18,
-      },
-    });
+  getStats(sessionId: string): Observable<CookieStats> {
+    return this.http.get<CookieStats>(`${this.apiUrl}/cookies/stats/${sessionId}`);
   }
 }
