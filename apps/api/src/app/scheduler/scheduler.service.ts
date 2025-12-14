@@ -2,11 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { CreateSessionDto } from '../sessions/dto/create-session.dto';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
+import { CrawlerService } from '../crawler.service';
 
 @Injectable()
 export class SchedulerService {
     constructor(
         private readonly dbService: DbService,
+        private readonly crawlerService: CrawlerService,
       ) { }
     
     private tasks:{id: string, url: string, config: number[], status: string, sessions: number[], sessionsDone: number[]}[] = [];
@@ -43,14 +45,17 @@ export class SchedulerService {
             const session = await this.dbService.createSession({ url: url, configId: configId});
             task.sessions.push(session.id);
 
-            // Simulate some async work for each session
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const done = await this.crawlerService.crawler(url, session.id);
 
-            task.sessionsDone.push(session.id);
-
-            if (task.sessionsDone.length === task.sessions.length) {
-                task.status = 'completed';
+            if (await done) {
+                task.sessionsDone.push(session.id);
+                
+                if (task.sessionsDone.length === task.config.length) {
+                    task.status = 'completed';
+                }
             }
+            
+            
         }
     }
 }
