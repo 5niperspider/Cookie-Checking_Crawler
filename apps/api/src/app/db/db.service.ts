@@ -145,26 +145,35 @@ export class DbService implements OnModuleDestroy {
 
 
     // Test curl "http://localhost:3000/api/sessions"
+    // Test curl "http://localhost:3000/api/sessions"
     async getAllSessions() {
         const sql = `
-            SELECT *
-            FROM session
-            ORDER BY id ASC;
+            SELECT 
+                s.id,
+                s.url,
+                s.created_at as "createdAt",
+                c.browser,
+                c.js as "jsEnabled",
+                c.ad_blocker as "adBlockerEnabled",
+                CASE WHEN c.cookies = 'yes' OR c.cookies = 'opt' THEN true ELSE false END as "cookieBannerHandled"
+            FROM session s
+            LEFT JOIN config c ON s.config_id = c.id
+            ORDER BY s.id ASC;
         `;
-        const { rows } = await this.query<Session>(sql, []);
+        const { rows } = await this.query(sql, []);
         return rows;
     }
 
     // Test curl "http://localhost:3000/api/sessions/configs/2"
     async getConfigById(id: number) {
-    const sql = `
+        const sql = `
         SELECT *
         FROM config
         WHERE id = $1
         LIMIT 1;
     `;
-    const { rows } = await this.query<Config>(sql, [id]);
-    return rows[0] ?? null;
+        const { rows } = await this.query<Config>(sql, [id]);
+        return rows[0] ?? null;
     }
 
 
