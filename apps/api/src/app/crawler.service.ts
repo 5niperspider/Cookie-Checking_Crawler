@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import puppeteer from 'puppeteer';
-import { DbService } from './db.service';
-import { NewCookie } from './db.service';
+import { DbService, NewCookie } from './db/db.service';
+
 
 @Injectable()
 export class CrawlerService {
     constructor( private readonly dbservice: DbService) {}
 
-   async crawler(url:string , session_id:number) {
+   async crawler(url:string , session_id:number): Promise<boolean>{
 
         const browser = await puppeteer.launch();
         const page = await browser.newPage();
@@ -36,10 +36,11 @@ export class CrawlerService {
         }
 
         await browser.close();
+        return true ; 
 
-        return cookies;
 
        
     }
+    
 
 }
