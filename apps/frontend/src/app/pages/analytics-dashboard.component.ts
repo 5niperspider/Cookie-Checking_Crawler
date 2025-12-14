@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CookieService, CrawlSession } from '../services/cookie.service';
 import { CookieOverviewChartComponent } from '../components/cookie-overview-chart.component';
 import { CookiesByDomainChartComponent } from '../components/cookies-by-domain-chart.component';
+import { CookieTableComponent } from '../components/cookie-table.component';
 
 @Component({
   selector: 'app-analytics-dashboard',
@@ -13,6 +14,7 @@ import { CookiesByDomainChartComponent } from '../components/cookies-by-domain-c
     FormsModule,
     CookieOverviewChartComponent,
     CookiesByDomainChartComponent,
+    CookieTableComponent
   ],
   template: `
     <div class="dashboard-container">
@@ -28,7 +30,7 @@ import { CookiesByDomainChartComponent } from '../components/cookies-by-domain-c
           <select id="sessionSelect" [(ngModel)]="selectedSessionId" (change)="onSessionChange()">
             <option value="">-- Select a session --</option>
             <option *ngFor="let session of sessions" [value]="session.id">
-              {{ session.browser }} | JS: {{ session.jsEnabled ? 'Yes' : 'No' }} | Banner: {{ session.cookieBannerHandled ? 'Yes' : 'No' }}
+              {{ session.createdAt | date:'short' }} | {{ session.url }} | {{ session.browser || 'Unknown' }} | JS: {{ session.jsEnabled ? 'Yes' : 'No' }} | Banner: {{ session.cookieBannerHandled ? 'Yes' : 'No' }}
             </option>
           </select>
         </div>
@@ -61,6 +63,9 @@ import { CookiesByDomainChartComponent } from '../components/cookies-by-domain-c
           <app-cookies-by-domain-chart [stats]="stats"></app-cookies-by-domain-chart>
         </div>
       </div>
+
+      <!-- Raw Data Table -->
+      <app-cookie-table [cookies]="cookies"></app-cookie-table>
     </div>
   `,
   styles: [
@@ -170,6 +175,7 @@ export class AnalyticsDashboardComponent implements OnInit {
   sessions: CrawlSession[] = [];
   selectedSessionId = '';
   stats: any = null;
+  cookies: any[] = [];
   loading = false;
   error: string | null = null;
 
@@ -211,8 +217,19 @@ export class AnalyticsDashboardComponent implements OnInit {
           this.error = 'Failed to load stats for the selected session.';
         },
       });
+
+      // Load Cookies List
+      this.cookieService.getCookies(this.selectedSessionId).subscribe({
+        next: (cookies) => {
+          this.cookies = cookies;
+        },
+        error: (err) => {
+          console.error('Error loading cookie list', err);
+        }
+      });
     } else {
       this.stats = null;
+      this.cookies = [];
     }
   }
 }

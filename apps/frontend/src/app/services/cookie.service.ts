@@ -26,6 +26,7 @@ export interface CookieStats {
 
 export interface CrawlSession {
   id: string;
+  url: string;
   browser: string;
   jsEnabled: boolean;
   cookieBannerHandled: boolean;
@@ -63,7 +64,7 @@ export class CookieService {
     sessionId: string,
     filters?: { isThirdParty?: boolean; isTracking?: boolean }
   ): Observable<Cookie[]> {
-    let url = `${this.apiUrl}/sessions/${sessionId}/cookies`;
+    let url = `${this.apiUrl}/cookies/by-session/${sessionId}`;
     if (filters) {
       const params = new URLSearchParams();
       if (filters.isThirdParty !== undefined) {
