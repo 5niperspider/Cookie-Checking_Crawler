@@ -8,11 +8,11 @@ export interface Cookie {
   value: string;
   domain: string;
   path?: string;
-  expires?: string;
+  expires?: Date;
   isThirdParty: boolean;
   isTracking: boolean;
   sessionId: string;
-  createdAt: string;
+  createdAt: Date;
 }
 
 export interface CookieStats {
@@ -31,7 +31,7 @@ export interface CrawlSession {
   jsEnabled: boolean;
   cookieBannerHandled: boolean;
   adBlockerEnabled: boolean;
-  createdAt: string;
+  createdAt: Date;
   cookies?: Cookie[];
 }
 
@@ -41,6 +41,7 @@ export interface CrawlSession {
 export class CookieService {
   private apiUrl = 'http://localhost:3000/api';
 
+  // eslint-disable-next-line @angular-eslint/prefer-inject
   constructor(private http: HttpClient) { }
 
   /**

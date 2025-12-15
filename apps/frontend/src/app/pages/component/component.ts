@@ -34,7 +34,7 @@ export class MyComponent {
     this.error = '';
     this.result = null;
     
-    const apiUrl = 'http://localhost:3000/api/session';
+    const apiUrl = 'http://localhost:3000/api/sessions';
     const body: SessionRequest = {
       url: this.url,
       config: [1, 3]
