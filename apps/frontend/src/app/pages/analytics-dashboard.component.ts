@@ -179,6 +179,7 @@ export class AnalyticsDashboardComponent implements OnInit {
   loading = false;
   error: string | null = null;
 
+  // eslint-disable-next-line @angular-eslint/prefer-inject
   constructor(private cookieService: CookieService) { }
 
   ngOnInit() {
