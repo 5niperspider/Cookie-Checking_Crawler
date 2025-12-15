@@ -8,7 +8,7 @@
     "docker:down": "docker compose down",
     "start:backend": "nx serve api",
     "start:frontend": "nx serve frontend",
-    "start": "npm run docker:up && concurrently \"npm run start:backend\" \"npm run start:frontend\"; npm run docker:down"
+    "start": "node start.js"
   },
   "private": true,
   "dependencies": {
