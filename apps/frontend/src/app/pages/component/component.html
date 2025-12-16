@@ -1,0 +1,42 @@
+<div id="principal">
+  <div id="inside">
+    <header>
+      <div class="left">
+        <div id="test1L">
+          <h1> </h1>
+        </div>
+      </div>
+      <div class="right">
+        <div id="test1R">
+          <p></p>
+        </div>
+      </div>
+    </header>
+    <div class="input-group mb-3">
+      <div class="container">
+        <h2>Session erstellen</h2>
+
+        <div class="input-group">
+          <input
+            type="text"
+            [(ngModel)]="url"
+            placeholder="URL eingeben (z.B. test.de)"
+            class="form-control"
+          />
+          <button (click)="sendRequest()" [disabled]="loading" class="btn">
+            {{ loading ? 'Lädt...' : 'Senden' }}
+          </button>
+        </div>
+
+        <div *ngIf="loading" class="loading">⏳ Request wird gesendet...</div>
+
+        <div *ngIf="error" class="error">❌ {{ error }}</div>
+
+        <div *ngIf="result" class="success">
+          <h3>✅ Erfolgreiche Response:</h3>
+          <pre>{{ result | json }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
