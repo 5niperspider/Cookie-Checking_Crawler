@@ -23,6 +23,8 @@ import { CookieTableComponent } from '../components/cookie-table.component';
         <p>Track and analyze cookie behavior across different browser configurations</p>
       </header>
 
+      <app-cookies-by-domain-chart [stats]="stats"></app-cookies-by-domain-chart>
+
       <div class="filters-section">
         <h2>Filters</h2>
         <div class="filter-group">
@@ -58,9 +60,6 @@ import { CookieTableComponent } from '../components/cookie-table.component';
       <div class="charts-section">
         <div class="chart-wrapper">
           <app-cookie-overview-chart [stats]="stats"></app-cookie-overview-chart>
-        </div>
-        <div class="chart-wrapper">
-          <app-cookies-by-domain-chart [stats]="stats"></app-cookies-by-domain-chart>
         </div>
       </div>
 
