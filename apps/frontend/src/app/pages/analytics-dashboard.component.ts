@@ -5,6 +5,7 @@ import { CookieService, CrawlSession } from '../services/cookie.service';
 import { CookieOverviewChartComponent } from '../components/cookie-overview-chart.component';
 import { CookiesByDomainChartComponent } from '../components/cookies-by-domain-chart.component';
 import { CookieTableComponent } from '../components/cookie-table.component';
+import { SessionSummaryChartComponent } from '../components/session-summary-chart.component';
 
 @Component({
   selector: 'app-analytics-dashboard',
@@ -14,7 +15,8 @@ import { CookieTableComponent } from '../components/cookie-table.component';
     FormsModule,
     CookieOverviewChartComponent,
     CookiesByDomainChartComponent,
-    CookieTableComponent
+    CookieTableComponent,
+    SessionSummaryChartComponent
   ],
   template: `
     <div class="dashboard-container">
@@ -22,6 +24,10 @@ import { CookieTableComponent } from '../components/cookie-table.component';
         <h1>Cookie Analysis Dashboard</h1>
         <p>Track and analyze cookie behavior across different browser configurations</p>
       </header>
+
+      <app-cookies-by-domain-chart [stats]="stats"></app-cookies-by-domain-chart>
+      
+      <app-session-summary-chart></app-session-summary-chart>
 
       <div class="filters-section">
         <h2>Filters</h2>
@@ -58,9 +64,6 @@ import { CookieTableComponent } from '../components/cookie-table.component';
       <div class="charts-section">
         <div class="chart-wrapper">
           <app-cookie-overview-chart [stats]="stats"></app-cookie-overview-chart>
-        </div>
-        <div class="chart-wrapper">
-          <app-cookies-by-domain-chart [stats]="stats"></app-cookies-by-domain-chart>
         </div>
       </div>
 
