@@ -86,7 +86,12 @@ const DUMMY_DATA: DummyGroup[] = generateDummyData();
     standalone: true,
     imports: [CommonModule],
     template: `
-        <div class="charts-row">
+        <div class="controls">
+            <span>Layout: </span>
+            <button (click)="layout = 'row'" [class.active]="layout === 'row'">Side-by-Side</button>
+            <button (click)="layout = 'column'" [class.active]="layout === 'column'">Stacked</button>
+        </div>
+        <div class="charts-container" [ngClass]="layout">
             <div class="chart-wrapper" *ngFor="let group of dummyData; let i = index">
                 <h3>Category: {{ group.category }}</h3>
                 <div class="scroll-container">
@@ -99,19 +104,54 @@ const DUMMY_DATA: DummyGroup[] = generateDummyData();
     `,
     styles: [
         `
-            .charts-row {
+            .controls {
+                margin-bottom: 15px;
                 display: flex;
-                flex-direction: row;
+                gap: 10px;
+                align-items: center;
+            }
+            .controls button {
+                padding: 6px 12px;
+                border: 1px solid #ccc;
+                background: #f8f8f8;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .controls button.active {
+                background: #36a2eb;
+                color: white;
+                border-color: #36a2eb;
+            }
+
+            .charts-container {
+                display: flex;
                 gap: 20px;
-                overflow-x: auto; /* Allow whole row to scroll if needed on small screens */
                 padding-bottom: 20px;
             }
-            .chart-wrapper {
+
+            /* Row Layout (Default) */
+            .charts-container.row {
+                flex-direction: row;
+                overflow-x: auto;
+            }
+            .charts-container.row .chart-wrapper {
                 flex: 1;
-                min-width: 300px; /* Minimum width per chart panel */
+                min-width: 300px;
+            }
+
+            /* Column Layout (Stacked) */
+            .charts-container.column {
+                flex-direction: column;
+            }
+            .charts-container.column .chart-wrapper {
+                width: 100%;
+            }
+
+            .chart-wrapper {
                 border: 1px solid #ddd;
                 padding: 10px;
                 border-radius: 8px;
+                background: white;
             }
             .scroll-container {
                 width: 100%;
@@ -135,6 +175,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
     @Input() stats?: CookieStats;
 
     public dummyData = DUMMY_DATA;
+    public layout: 'row' | 'column' = 'row';
     private chartInstances: ChartJS[] = [];
 
     ngOnInit() {
