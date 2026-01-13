@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { CreateSessionDto } from '../sessions/dto/create-session.dto';
 import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { CrawlerService } from '../crawler.service';
 
-const configLength = 10;
+const configLength = 3;
 
 @Injectable()
 export class SchedulerService {
@@ -43,7 +42,7 @@ export class SchedulerService {
 
         task.status = 'in-progress';
         const url = task.url;
-        for (let conf = 0; conf < configLength; conf++) {
+        for (let conf = 1; conf < configLength+1; conf++) {
             const session = await this.dbService.createSession({ url: url, configId: conf});
             task.sessions.push(session.id);
 
