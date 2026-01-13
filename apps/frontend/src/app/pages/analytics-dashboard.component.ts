@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CookieService, CrawlSession } from '../services/cookie.service';
@@ -34,6 +34,29 @@ import { SessionSummaryChartComponent } from '../components/session-summary-char
               {{ session.createdAt | date:'short' }} | {{ session.url }} | {{ session.browser || 'Unknown' }} | JS: {{ session.jsEnabled ? 'Yes' : 'No' }} | Banner: {{ session.cookieBannerHandled ? 'Yes' : 'No' }}
             </option>
           </select>
+        </div>
+        <div class="filter-group config-filter">
+          <label>Configs:</label>
+          <div class="custom-dropdown" #configDropdown>
+            <button class="dropdown-toggle" (click)="toggleConfigDropdown()">
+              {{ getSelectedConfigLabel() }}
+              <span class="arrow">▼</span>
+            </button>
+            <div class="dropdown-menu" *ngIf="isConfigDropdownOpen">
+              <div class="dropdown-item" (click)="toggleConfig('browser')">
+                <input type="checkbox" [checked]="isConfigSelected('browser')"> Browser
+              </div>
+              <div class="dropdown-item" (click)="toggleConfig('cookie')">
+                <input type="checkbox" [checked]="isConfigSelected('cookie')"> Cookie
+              </div>
+              <div class="dropdown-item" (click)="toggleConfig('js')">
+                <input type="checkbox" [checked]="isConfigSelected('js')"> JS
+              </div>
+              <div class="dropdown-item" (click)="toggleConfig('ad_blocker')">
+                <input type="checkbox" [checked]="isConfigSelected('ad_blocker')"> Ad Blocker
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -125,6 +148,58 @@ import { SessionSummaryChartComponent } from '../components/session-summary-char
         font-size: 14px;
       }
 
+      .config-filter {
+        position: relative;
+      }
+
+      .custom-dropdown {
+        position: relative;
+        min-width: 200px;
+      }
+
+      .dropdown-toggle {
+        width: 100%;
+        padding: 8px 12px;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        text-align: left;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-top: 4px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .dropdown-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .dropdown-item:hover {
+        background-color: #f5f5f5;
+      }
+
       .stats-section {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -172,11 +247,13 @@ import { SessionSummaryChartComponent } from '../components/session-summary-char
 export class AnalyticsDashboardComponent implements OnInit {
   sessions: CrawlSession[] = [];
   selectedSessionId = '';
+  selectedConfig: string[] = [];
   stats: any = null;
   cookies: any[] = [];
   loading = false;
   error: string | null = null;
 
+  // eslint-disable-next-line @angular-eslint/prefer-inject
   // eslint-disable-next-line @angular-eslint/prefer-inject
   constructor(private cookieService: CookieService) { }
 
@@ -229,6 +306,48 @@ export class AnalyticsDashboardComponent implements OnInit {
     } else {
       this.stats = null;
       this.cookies = [];
+    }
+  }
+
+  isConfigDropdownOpen = false;
+
+  toggleConfigDropdown() {
+    this.isConfigDropdownOpen = !this.isConfigDropdownOpen;
+  }
+
+  toggleConfig(value: string) {
+    const index = this.selectedConfig.indexOf(value);
+    if (index === -1) {
+      this.selectedConfig.push(value);
+    } else {
+      this.selectedConfig.splice(index, 1);
+    }
+  }
+
+  isConfigSelected(value: string): boolean {
+    return this.selectedConfig.includes(value);
+  }
+
+  configLabels: { [key: string]: string } = {
+    'browser': 'Browser',
+    'cookie': 'Cookie',
+    'js': 'JS',
+    'ad_blocker': 'Ad Blocker'
+  };
+
+  getSelectedConfigLabel(): string {
+    if (this.selectedConfig.length === 0) {
+      return 'Select Configs';
+    }
+    return this.selectedConfig.map(c => this.configLabels[c]).join(', ');
+  }
+
+  @ViewChild('configDropdown') dropdownRef!: ElementRef;
+
+  @HostListener('document:click', ['$event'])
+  clickout(event: Event) {
+    if (this.dropdownRef && !this.dropdownRef.nativeElement.contains(event.target)) {
+      this.isConfigDropdownOpen = false;
     }
   }
 }
