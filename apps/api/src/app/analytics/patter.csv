@@ -1,0 +1,237 @@
+_ga,Google Analytics (Universal & GA4)
+_gid,Google Analytics
+_gat,Google Analytics (Throttle)
+_gac,Google Ads
+_gcl,Google Conversion Tracking
+__utma,Google Analytics (Legacy)
+__utmb,Google Analytics (Legacy)
+__utmc,Google Analytics (Legacy)
+__utmz,Google Analytics (Legacy)
+__utmt,Google Analytics (Legacy)
+NID,Google (Personalization)
+IDE,Google (Doubleclick)
+DSID,Google (Doubleclick)
+test_cookie,Google (Doubleclick)
+__gads,Google Ad Manager
+__gpi,Google Ad Manager
+gcl_au,Google AdSense
+OTZ,Google Analytics
+_fbp,Meta (Facebook Pixel)
+_fbc,Meta (Facebook Pixel)
+fr,Meta (Facebook Advertising)
+datr,Meta (Security/Tracking)
+sb,Meta (Browser Tracking)
+wd,Meta (Screen Resolution)
+_uetsid,Microsoft Bing Ads
+_uetvid,Microsoft Bing Ads
+MUID,Microsoft/Bing
+_clck,Microsoft Clarity
+_clsk,Microsoft Clarity
+CLID,Microsoft Clarity
+_hjSession,Hotjar
+_hjSessionUser,Hotjar
+_hjIncludedInSample,Hotjar
+_hjAbsoluteSessionInProgress,Hotjar
+_hjTLDTest,Hotjar
+_pk_id,Matomo/Piwik
+_pk_ses,Matomo/Piwik
+_pk_ref,Matomo/Piwik
+_pk_cvar,Matomo/Piwik
+mtm_consent,Matomo
+bcookie,LinkedIn
+lidc,LinkedIn
+li_sugr,LinkedIn
+li_gc,LinkedIn
+UserMatchHistory,LinkedIn
+AnalyticsSyncHistory,LinkedIn
+_tt_enable_cookie,TikTok
+ttwid,TikTok
+_ttp,TikTok
+_scid,Snapchat
+_scid_r,Snapchat
+_pin_unauth,Pinterest
+_rdt,Reddit
+hubspotutk,HubSpot
+__hssc,HubSpot
+__hssrc,HubSpot
+__hstc,HubSpot
+_hp2_id,Heap Analytics
+_hp2_ses,Heap Analytics
+_vis_opt,VWO
+_vwo_uuid,VWO
+_qca,Quantcast
+__qca,Quantcast
+_s_vip,Adobe Analytics
+s_ecid,Adobe Analytics
+s_fid,Adobe Analytics
+s_vi,Adobe Analytics
+AMCV_,Adobe Experience Cloud
+AMCVS_,Adobe Experience Cloud
+_tq_id,Taboola
+_taboola,Taboola
+outbrain_cid,Outbrain
+_px,Performance Advertising
+_conv_v,Convert.com
+_conv_s,Convert.com
+_td,Treasure Data
+_mbi,Mailchimp
+_mcid,Mailchimp
+_ct_session,Clicky
+_ext_ga,Extole
+_mkto_trk,Marketo
+_beh_id,Behamics
+_sc_id,ScaleWay
+_et_id,etracker
+et_cohort,etracker
+_is_visitor,Infusionsoft
+_sm_au_,Salesforce
+_gaexp,Google Optimize
+optimizelyEndUserId,Optimizely
+optimizelySegments,Optimizely
+_iub_cs,Iubenda
+_ccm_v,CCM19
+_p_hly,Philly.com
+_p_opt,Adroll
+__adroll,Adroll
+__ar_v4,Adroll
+_kuid_,Salesforce/Krux
+_KRTB,PubMatic
+KRTBCLIENT_ID,PubMatic
+_li_dcdm_c,LiveIntent
+_li_ss,LiveIntent
+_atrk,Alexa
+_atuvc,AddThis
+_atuvs,AddThis
+_st_id,StatCounter
+_t_id,Twitter/X
+personalization_id,Twitter/X
+muc_ads,Twitter/X
+_active_session,GitHub (Tracking)
+_biz_uid,Bizible
+_biz_sid,Bizible
+_biz_flagsA,Bizible
+_cc_id,CrwdCntrl
+_ct_id,ClickTripz
+_em_vi,EmailReach
+_everest_g_v,Adobe (Everest Tech)
+_fb_chat,Facebook
+_gads,Google Ad Manager
+_hp2_id,Heap
+_hjMinimizedPolls,Hotjar
+_it_id,Iterable
+_jsuid,GetClicky
+_liveagent_,Salesforce
+_mixpanel,Mixpanel
+_mp_id,Mixpanel
+_mvt_id,MVT
+_om_v,OptinMonster
+_openstat,OpenStat
+_p_id,Pardot
+_parsely_session,Parsely
+_parsely_visitor,Parsely
+_pt_id,PostAffiliatePro
+_q_id,Quantcast
+_qubit,Qubit
+_s_id,Adobe
+_sc_id,Snapchat
+_sf_id,Chartbeat
+_sna_id,Snapchat
+_u_id,Uber
+_v_id,VWO
+_w_id,Woopra
+_x_id,Xaxis
+__ar_v4,Adroll
+__cf_bm,Cloudflare (Bot Management/Tracking)
+__expondi,Expondo
+__l_id,LivePerson
+__lotame,Lotame
+__qca,Quantcast
+__sonar,Sonar
+__tcf_,IAB Transparency & Consent
+__tm,TradeMe
+__utma,Google
+__utmb,Google
+__utmc,Google
+__utmv,Google
+__utmz,Google
+__vst,Visitor
+__z_id,Zendesk
+_ab_id,A/B Testing
+_adr_id,Adroll
+_ai_id,AppInsights
+_as_id,ActiveCampaign
+_at_id,AddThis
+_au_id,Autopilot
+_bd_id,Baidu
+_c_id,Chartbeat
+_ce_id,CrazyEgg
+_cl_id,Clarity
+_ct_id,Clicky
+_d_id,Datalogix
+_dr_id,Drift
+_e_id,Eloqua
+_em_id,Email
+_ev_id,Evergage
+_f_id,Facebook
+_fl_id,Floodlight
+_fs_id,FullStory
+_g_id,Google
+_h_id,Hotjar
+_i_id,Intercom
+_j_id,Jivox
+_k_id,Klaviyo
+_l_id,LinkedIn
+_m_id,Marketo
+_n_id,NetSuite
+_o_id,Outbrain
+_p_id,Pinterest
+_q_id,Quora
+_r_id,Reddit
+_s_id,Salesforce
+_t_id,TikTok
+_u_id,UserWay
+_v_id,Vimeo
+_w_id,Wistia
+_x_id,Xing
+_y_id,Yandex
+_z_id,Zapier
+ad_id,Advertising
+aff_id,Affiliate
+amzn_id,Amazon
+aw_id,AdWords
+bb_id,BlueKai
+bt_id,BrightTag
+cc_id,ClickCease
+cm_id,Coremetrics
+dc_id,DoubleClick
+dv_id,Drawbridge
+em_id,Emma
+fb_id,Facebook
+ga_id,Google
+gi_id,Giann
+hs_id,HubSpot
+id_id,ID.me
+li_id,LinkedIn
+mc_id,Mailchimp
+ms_id,Microsoft
+mz_id,Mize
+nr_id,New Relic
+oc_id,Oracle
+pn_id,Pinterest
+rb_id,Rubicon
+rt_id,Retargeting
+sc_id,Snapchat
+st_id,Stripe (Tracking)
+tt_id,TikTok
+tw_id,Twitter
+ur_id,UserReport
+vi_id,Vimeo
+yt_id,YouTube
+_sp_id,Snowplow
+_sp_ses,Snowplow
+_snowplow_,Snowplow
+_dr_id,Drift
+_dr_ses,Drift
+_intercom_,Intercom
+_uetsid,Bing
+_uetvid,Bing
