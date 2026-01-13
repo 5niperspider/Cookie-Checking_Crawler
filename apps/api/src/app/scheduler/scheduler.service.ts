@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { CrawlerService } from '../crawler.service';
 
+const configLength = 10;
+
 @Injectable()
 export class SchedulerService {
     constructor(
@@ -11,17 +13,18 @@ export class SchedulerService {
         private readonly crawlerService: CrawlerService,
       ) { }
     
-    private tasks:{id: string, url: string, config: number[], status: string, sessions: number[], sessionsDone: number[]}[] = [];
+    private tasks:{id: string, url: string, status: string, sessions: number[], sessionsDone: number[]}[] = [];
 
-    addTask(task: CreateSessionDto) {
-        const url: string = task.url;
-        const config: number[] = task.config;
-        const id: string = randomUUID()
+    addTasks(tasks: string[]) {
+        const ids: string[] = []
 
-        this.tasks.push({ id: id, url: url, config: config, status: 'scheduled', sessions: [], sessionsDone: []});
-        this.asyncRunTask(id);
-
-        return { id: id, status: 'scheduled' }
+        for (const url of tasks) {
+            const id: string = randomUUID();
+            this.tasks.push({ id: id, url: url, status: 'scheduled', sessions: [], sessionsDone: []});
+            ids.push(id);
+            this.asyncRunTask(id);
+        }
+        return { ids: ids, status: 'scheduled' }
     }
 
     getStatus(id: string) {
@@ -29,7 +32,7 @@ export class SchedulerService {
         if (!task) {
             throw new Error(`Task with id ${id} not found`);
         }
-        return { id: id, status: task.status };
+        return { id: id, url: task.url, status: task.status };
     }
 
     private async asyncRunTask(id: string) {
@@ -40,9 +43,8 @@ export class SchedulerService {
 
         task.status = 'in-progress';
         const url = task.url;
-        for (let i = 0; i < task.config.length; i++) {
-            const configId = task.config[i];
-            const session = await this.dbService.createSession({ url: url, configId: configId});
+        for (let conf = 0; conf < configLength; conf++) {
+            const session = await this.dbService.createSession({ url: url, configId: conf});
             task.sessions.push(session.id);
 
             const done = await this.crawlerService.crawler(url, session.id);
@@ -50,7 +52,7 @@ export class SchedulerService {
             if (await done) {
                 task.sessionsDone.push(session.id);
                 
-                if (task.sessionsDone.length === task.config.length) {
+                if (task.sessionsDone.length === task.sessions.length) {
                     task.status = 'completed';
                 }
             }

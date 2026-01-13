@@ -19,10 +19,12 @@ export class SessionsController {
   ) { }
 
   @Post()
-  async create(@Body() sessionTask: CreateSessionDto) {
+  async create(@Body() sessionTasks: string[]) {
     try {
-
-      return this.schedulerService.addTask(sessionTask);
+      if (!Array.isArray(sessionTasks) || sessionTasks.length === 0) {
+        throw new Error('Invalid input: expected a non-empty array of URLs');
+      }
+      return this.schedulerService.addTasks(sessionTasks);
     } catch (error) {
       throw new HttpException(
         {
