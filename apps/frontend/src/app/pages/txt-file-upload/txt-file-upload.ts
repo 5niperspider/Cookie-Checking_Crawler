@@ -77,7 +77,7 @@ export class TxtFileUploadComponent {
 
 
     private sendLines(): void {
-        this.http.post('/api/sessions', this.lines).subscribe();
+        this.http.post('http://localhost:3000/api/sessions', this.lines).subscribe();
     }
 
 }
