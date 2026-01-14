@@ -72,21 +72,9 @@ export class TxtFileUploadComponent {
         reader.readAsText(this.selectedFile, 'utf-8');
     }
 
-    private sendLines(): void {
-        this.loading = true;
-        this.error = null;
-        this.result = null;
 
-        this.http.post('http://localhost:3000/api/sessions', this.lines).subscribe({
-            next: (res) => {
-                this.result = res;
-                this.loading = false;
-            },
-            error: (err) => {
-                console.error('Fehler beim Senden der Daten', err);
-                this.error = 'Fehler beim Senden der Daten';
-                this.loading = false;
-            },
-        });
+    private sendLines(): void {
+        this.http.post('http://localhost:3000/api/sessions', this.lines).subscribe();
     }
+
 }
