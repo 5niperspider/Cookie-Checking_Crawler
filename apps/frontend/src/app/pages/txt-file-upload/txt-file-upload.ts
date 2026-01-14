@@ -10,9 +10,6 @@ import { HttpClient } from '@angular/common/http';
 })
 export class TxtFileUploadComponent {
     selectedFile: File | null = null;
-    /* The line `lines: string[] = [];` in the `TxtFileUploadComponent` class is initializing a
-    property named `lines` as an empty array of strings. This property is used to store the lines of
-    text read from the uploaded file after parsing it. */
     lines: string[] = [];
 
     loading = false;
