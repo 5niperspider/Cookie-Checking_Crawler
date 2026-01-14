@@ -7,7 +7,6 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { CreateSessionDto } from './dto/create-session.dto';
 import { DbService } from '../db/db.service';
 import { SchedulerService } from '../scheduler/scheduler.service';
 
@@ -19,10 +18,12 @@ export class SessionsController {
   ) { }
 
   @Post()
-  async create(@Body() sessionTask: CreateSessionDto) {
+  async create(@Body() sessionTasks: string[]) {
     try {
-
-      return this.schedulerService.addTask(sessionTask);
+      if (!Array.isArray(sessionTasks) || sessionTasks.length === 0) {
+        throw new Error('Invalid input: expected a non-empty array of session tasks');
+      }
+      return this.schedulerService.addTasks(sessionTasks);
     } catch (error) {
       throw new HttpException(
         {

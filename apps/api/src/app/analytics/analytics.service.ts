@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DbService } from '../db/db.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface Cookie {
   id?: number;
@@ -27,8 +29,23 @@ export interface AnalyticsResult {
 @Injectable()
 export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name);
+  private readonly trackingPatterns: string[];
 
-  constructor(private readonly dbService: DbService) {}
+  constructor(private readonly dbService: DbService) {
+    this.trackingPatterns = this.loadTrackingPatterns();
+  }
+
+  private loadTrackingPatterns(): string[] {
+    try {
+      const filePath = path.join(__dirname, 'patter.csv');
+      const data = fs.readFileSync(filePath, 'utf-8');
+      const lines = data.split('\n').filter(line => line.trim());
+      return lines.map(line => line.split(',')[0].trim()).filter(pattern => pattern);
+    } catch (error) {
+      this.logger.error(`Error loading tracking patterns: ${error.message}`);
+      return ['ga', 'uid', 'track', '_gid', '_ga']; // fallback
+    }
+  }
 
   async getAnalytics(): Promise<AnalyticsResult> {
     try {
@@ -99,8 +116,7 @@ export class AnalyticsService {
 
   private isTrackingCookie(cookie: Cookie): boolean {
     // Placeholder: später mit Pattern-Matching und anderen Verfahren erweitern
-    const trackingPatterns = ['ga', 'uid', 'track', '_gid', '_ga'];
     const cookieName = cookie.name.toLowerCase();
-    return trackingPatterns.some((pattern) => cookieName.includes(pattern));
+    return this.trackingPatterns.some((pattern) => cookieName.includes(pattern.toLowerCase()));
   }
 }
