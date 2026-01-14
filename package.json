@@ -32,6 +32,8 @@
     "puppeteer": "^24.32.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "~7.8.0",
+    "webpack": "^5.104.1",
+    "webpack-cli": "^5.1.4",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
