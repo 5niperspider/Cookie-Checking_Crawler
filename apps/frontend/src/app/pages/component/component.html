@@ -1,40 +1,88 @@
-<div id="principal">
-  <div id="inside">
-    <header>
-      <div class="left">
-        <div id="test1L">
-          <h1> </h1>
+<div id="principal" class="inset-0 flex items-center justify-center">
+  <div id="inside" class="w-[750px] max-w-full
+           px-[70px] py-[70px]">
+    <header class="flex text-[16px] font-bold mb-1.5">
+      <div class="left flex w-1/2 items-center">
+        <div id="test1L" class="flex-grow">
+          <h1 class="text-[360px] leading-none"></h1>
         </div>
       </div>
-      <div class="right">
-        <div id="test1R">
+      <div class="right flex w-1/2 items-center justify-end gap-[10px]">
+        <div id="test1R" class="flex-grow">
           <p></p>
         </div>
       </div>
     </header>
-    <div class="input-group mb-3">
-      <div class="container">
-        <h2>Session erstellen</h2>
 
-        <div class="input-group">
-          <input
-            type="text"
-            [(ngModel)]="url"
-            placeholder="URL eingeben (z.B. test.de)"
-            class="form-control"
-          />
-          <button (click)="sendRequest()" [disabled]="loading" class="btn">
+    <div class="input-group mb-3">
+      <div class="container max-w-[600px] mx-auto my-[50px] px-5 py-5">
+        <h2 class="text-lg font-semibold mb-4">Session erstellen</h2>
+
+        <!-- Input-Gruppe -->
+        <div class="flex gap-[10px] mb-5">
+          <input type="text" [(ngModel)]="url" placeholder="URL eingeben (z.B. test.de)" class="flex-1
+                   px-3 py-2
+                   text-[14px] leading-[1.5]
+                   text-[#212529]
+                   bg-white
+                   border border-[#ced4da]
+                   rounded
+                   outline-none
+                   focus:border-[#86b7fe]
+                   focus:ring-4 focus:ring-[rgba(13,110,253,0.25)]
+                   placeholder:text-[#6c757d]" />
+
+          <button (click)="sendRequest()" [disabled]="loading" class="px-5 py-2.5
+                   text-[14px] leading-[1.5]
+                   font-bold
+                   text-white
+                   text-center
+                   bg-[#007bff]
+                   border border-transparent
+                   rounded
+                   cursor-pointer select-none
+                   transition
+                   hover:bg-[#0056b3]
+                   disabled:bg-[#ccc]
+                   disabled:cursor-not-allowed">
             {{ loading ? 'Lädt...' : 'Senden' }}
           </button>
         </div>
 
-        <div *ngIf="loading" class="loading">⏳ Request wird gesendet...</div>
+        <!-- Status-Meldungen -->
 
-        <div *ngIf="error" class="error">❌ {{ error }}</div>
+        <div *ngIf="loading" class="mt-2 mb-2
+                 text-amber-700 bg-amber-50
+                 border border-amber-200
+                 px-3 py-2 rounded
+                 font-bold">
+          ⏳ Request wird gesendet...
+        </div>
 
-        <div *ngIf="result" class="success">
-          <h3>✅ Erfolgreiche Response:</h3>
-          <pre>{{ result | json }}</pre>
+        <div *ngIf="error" class="mt-2 mb-2
+                 flex items-center gap-2
+                 text-red-800 bg-red-50
+                 border border-red-200
+                 px-3 py-2 rounded">
+          <span>❌</span>
+          <span>{{ error }}</span>
+        </div>
+
+        <div *ngIf="result" class="mt-5 mb-2
+                 bg-emerald-50
+                 border-l-4 border-emerald-500
+                 px-3 py-3 rounded">
+          <h3 class="mt-0 mb-2 font-semibold text-emerald-800">
+            ✅ Erfolgreiche Response:
+          </h3>
+          <pre class="bg-[#f5f5f5]
+                   px-3 py-3
+                   rounded
+                   border border-[#ddd]
+                   text-[13px] leading-[1.5]
+                   overflow-x-auto">
+{{ result | json }}
+          </pre>
         </div>
       </div>
     </div>

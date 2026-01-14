@@ -11,7 +11,6 @@ interface SessionRequest {
 interface SessionResponse {
   sessionId?: string;
   status?: string;
-  
 }
 
 @Component({
@@ -19,27 +18,26 @@ interface SessionResponse {
   standalone: true,
   imports: [FormsModule, CommonModule],
   templateUrl: './component.html',
-  styleUrl: './component.css',
 })
 export class MyComponent {
   url = '';
   result: SessionResponse | null = null;
   loading = false;
   error = '';
-  
+
   // eslint-disable-next-line @angular-eslint/prefer-inject
-  constructor(private http: HttpClient) {}
-   sendRequest() {
+  constructor(private http: HttpClient) { }
+  sendRequest() {
     this.loading = true;
     this.error = '';
     this.result = null;
-    
+
     const apiUrl = 'http://localhost:3000/api/sessions';
     const body: SessionRequest = {
       url: this.url,
       config: [1, 3]
     };
-    
+
     this.http.post<SessionResponse>(apiUrl, body).subscribe({
       next: (response) => {
         console.log('Erfolg:', response);
@@ -53,5 +51,5 @@ export class MyComponent {
       }
     });
   }
-  
+
 }
