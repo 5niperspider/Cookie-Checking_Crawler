@@ -77,7 +77,7 @@ export class TxtFileUploadComponent {
         this.error = null;
         this.result = null;
 
-        this.http.post('/api/sessions', { lines: this.lines }).subscribe({
+        this.http.post('http://localhost:3000/api/sessions', this.lines).subscribe({
             next: (res) => {
                 this.result = res;
                 this.loading = false;
