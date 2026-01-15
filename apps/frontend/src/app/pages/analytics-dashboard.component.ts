@@ -6,6 +6,7 @@ import { CookieOverviewChartComponent } from '../components/cookie-overview-char
 import { CookiesByDomainChartComponent } from '../components/cookies-by-domain-chart.component';
 import { CookieTableComponent } from '../components/cookie-table.component';
 import { SessionSummaryChartComponent } from '../components/session-summary-chart.component';
+import { DUMMY_DATA } from '../data/dummy-data';
 
 @Component({
   selector: 'app-analytics-dashboard',
@@ -30,7 +31,7 @@ import { SessionSummaryChartComponent } from '../components/session-summary-char
           <label for="sessionSelect">Session:</label>
           <select id="sessionSelect" [(ngModel)]="selectedSessionId" (change)="onSessionChange()">
             <option value="">-- Select a session --</option>
-            <option *ngFor="let session of sessions" [value]="session.id">
+            <option *ngFor="let session of filteredSessions" [value]="session.id">
               {{ session.createdAt | date:'short' }} | {{ session.url }} | {{ session.browser || 'Unknown' }} | JS: {{ session.jsEnabled ? 'Yes' : 'No' }} | Banner: {{ session.cookieBannerHandled ? 'Yes' : 'No' }}
             </option>
           </select>
@@ -112,7 +113,7 @@ import { SessionSummaryChartComponent } from '../components/session-summary-char
       .dashboard-header p {
         margin: 0;
         color: #666;
-        font-size: 14px;
+        margin-bottom: 30px;
       }
 
       .filters-section {
@@ -246,6 +247,7 @@ import { SessionSummaryChartComponent } from '../components/session-summary-char
 })
 export class AnalyticsDashboardComponent implements OnInit {
   sessions: CrawlSession[] = [];
+  filteredSessions: CrawlSession[] = [];
   selectedSessionId = '';
   selectedConfig: string[] = [];
   stats: any = null;
@@ -253,7 +255,6 @@ export class AnalyticsDashboardComponent implements OnInit {
   loading = false;
   error: string | null = null;
 
-  // eslint-disable-next-line @angular-eslint/prefer-inject
   // eslint-disable-next-line @angular-eslint/prefer-inject
   constructor(private cookieService: CookieService) { }
 
@@ -263,27 +264,106 @@ export class AnalyticsDashboardComponent implements OnInit {
 
   loadSessions() {
     this.loading = true;
-    this.cookieService.getSessions().subscribe({
-      next: (sessions) => {
-        this.sessions = sessions;
-        this.loading = false;
 
-        // Auto-select first session if available
-        if (sessions.length > 0) {
-          this.selectedSessionId = sessions[0].id;
-          this.onSessionChange();
-        }
-      },
-      error: (err) => {
-        console.error('Could not load sessions', err);
-        this.error = 'Failed to load sessions. Please ensure backend is running.';
-        this.loading = false;
-      },
+    // Convert DUMMY_DATA to CrawlSession[]
+    const dummySessions: CrawlSession[] = [];
+    let idCounter = 1;
+
+    DUMMY_DATA.forEach(group => {
+      Object.entries(group.sessions).forEach(([url, data]) => {
+        Object.keys(data).forEach(browser => {
+          // Create a deterministic mock session
+          const isJs = (idCounter % 2 === 0);
+          const isAdBlock = (idCounter % 3 === 0);
+          const isCookie = (idCounter % 4 !== 0);
+
+          dummySessions.push({
+            id: `mock-session-${idCounter++}`,
+            url: url,
+            browser: browser,
+            jsEnabled: isJs,
+            adBlockerEnabled: isAdBlock,
+            cookieBannerHandled: isCookie,
+            createdAt: new Date()
+          });
+        });
+      });
     });
+
+    this.sessions = dummySessions;
+    this.applyFilters();
+    this.loading = false;
+
+    if (this.filteredSessions.length > 0) {
+      this.selectedSessionId = this.filteredSessions[0].id;
+      this.onSessionChange();
+    }
+  }
+
+  applyFilters() {
+    if (this.selectedConfig.length === 0) {
+      this.filteredSessions = this.sessions;
+    } else {
+      this.filteredSessions = this.sessions.filter(session => {
+        let matches = true;
+        if (this.selectedConfig.includes('js') && !session.jsEnabled) matches = false;
+        if (this.selectedConfig.includes('ad_blocker') && !session.adBlockerEnabled) matches = false;
+        if (this.selectedConfig.includes('cookie') && !session.cookieBannerHandled) matches = false;
+        if (this.selectedConfig.includes('browser') && !session.browser) matches = false; // Just to have something
+        return matches;
+      });
+    }
+
+    // Reset selection if current selection is filtered out
+    if (this.selectedSessionId && !this.filteredSessions.find(s => s.id === this.selectedSessionId)) {
+      this.selectedSessionId = this.filteredSessions.length > 0 ? this.filteredSessions[0].id : '';
+      this.onSessionChange();
+    }
   }
 
   onSessionChange() {
     if (this.selectedSessionId) {
+      if (this.selectedSessionId.startsWith('mock-session-')) {
+        // Calculate stats from DUMMY_DATA
+        const session = this.sessions.find(s => s.id === this.selectedSessionId);
+        if (session) {
+          const url = session.url;
+          const browser = session.browser;
+
+          // Find the data in DUMMY_DATA
+          let foundSessionData: any = null;
+          for (const group of DUMMY_DATA) {
+            if (group.sessions[url]) {
+              foundSessionData = group.sessions[url];
+              break;
+            }
+          }
+
+          if (foundSessionData && foundSessionData[browser]) {
+            const browserData = foundSessionData[browser];
+            const firstPartyNonTracking = browserData.firstparty.nontrakking.length;
+            const firstPartyTracking = browserData.firstparty.trakking.length;
+            const thirdParty = browserData.thirdparty.length;
+
+            this.stats = {
+              totalCookies: firstPartyNonTracking + firstPartyTracking + thirdParty,
+              thirdPartyCookies: thirdParty,
+              trackingCookies: firstPartyTracking,
+              firstPartyCookies: firstPartyNonTracking + firstPartyTracking,
+              byDomain: { 'example.com': firstPartyNonTracking, 'tracker.com': firstPartyTracking, 'ads.net': thirdParty } // Mock domain data
+            };
+
+            // Mock cookies list
+            this.cookies = [
+              { name: 'session_id', domain: 'example.com', value: 'xyz', isThirdParty: false, isTracking: false },
+              { name: '_ga', domain: 'tracker.com', value: 'GA1.2.3', isThirdParty: false, isTracking: true },
+              { name: 'ad_id', domain: 'ads.net', value: '123', isThirdParty: true, isTracking: true }
+            ];
+            return;
+          }
+        }
+      }
+
       this.cookieService.getStats(this.selectedSessionId).subscribe({
         next: (stats) => {
           this.stats = stats;
@@ -322,6 +402,7 @@ export class AnalyticsDashboardComponent implements OnInit {
     } else {
       this.selectedConfig.splice(index, 1);
     }
+    this.applyFilters();
   }
 
   isConfigSelected(value: string): boolean {
