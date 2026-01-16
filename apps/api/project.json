@@ -18,6 +18,7 @@
         "assets": ["apps/api/src/assets"],
         "webpackConfig": "apps/api/webpack.config.js"
       },
+      "externalDependencies": ["webpack-cli"],
       "configurations": {
         "development": {
           "buildOptimizer": false,

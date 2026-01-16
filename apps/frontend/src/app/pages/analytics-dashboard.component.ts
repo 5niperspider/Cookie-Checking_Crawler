@@ -6,6 +6,7 @@ import { CookieOverviewChartComponent } from '../components/cookie-overview-char
 import { CookiesByDomainChartComponent } from '../components/cookies-by-domain-chart.component';
 import { CookieTableComponent } from '../components/cookie-table.component';
 import { SessionSummaryChartComponent } from '../components/session-summary-chart.component';
+import { TxtFileUploadComponent } from './txt-file-upload/txt-file-upload';
 
 @Component({
   selector: 'app-analytics-dashboard',
@@ -16,13 +17,15 @@ import { SessionSummaryChartComponent } from '../components/session-summary-char
     CookieOverviewChartComponent,
     CookiesByDomainChartComponent,
     CookieTableComponent,
-    SessionSummaryChartComponent
+    SessionSummaryChartComponent,
+    TxtFileUploadComponent
   ],
   template: `
     <div class="dashboard-container">
       <header class="dashboard-header">
         <h1>Cookie Analysis Dashboard</h1>
         <p>Track and analyze cookie behavior across different browser configurations</p>
+        <app-txt-file-upload></app-txt-file-upload>
       </header>
 
       <app-cookies-by-domain-chart [stats]="stats"></app-cookies-by-domain-chart>
