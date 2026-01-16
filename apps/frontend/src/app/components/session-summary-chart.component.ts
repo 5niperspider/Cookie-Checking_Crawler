@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, AfterViewInit, Input, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
     Chart as ChartJS,
@@ -10,7 +10,7 @@ import {
     Legend
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-import { DUMMY_DATA } from '../data/dummy-data';
+import { CrawlSession, AnalyticsResult, ClassifiedCookies } from '../services/cookie.service';
 
 ChartJS.register(
     CategoryScale,
@@ -58,8 +58,14 @@ ChartJS.register(
 })
 export class SessionSummaryChartComponent implements OnInit, AfterViewInit {
     @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
+    @Input() sessions: CrawlSession[] = [];
+    @Input() analyticsData: AnalyticsResult = {};
 
     private chartInstance?: ChartJS;
+
+    ngOnChanges() {
+        this.renderChart();
+    }
 
     ngOnInit() {
     }
@@ -76,31 +82,38 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit {
 
         // Process Data
         const browsers = ['Chrome', 'Firefox', 'Edge'];
-        const categories = DUMMY_DATA.map(g => g.category); // ['Ablehnen', 'Akzeptieren', 'Optional']
+        // Group by what? Real data doesn't have 'categories' like 'Accept/Reject' explicitly unless we infer from cookieBannerHandled
+        // Let's use 'Cookie Action' as categories: 'Accepted' (handled=true), 'Ignored/Rejected' (handled=false)
+        const categories = ['Accepted', 'Ignored/Rejected'];
 
         // Calculate Averages
         const dataByBrowser: { [browser: string]: number[] } = {};
 
         browsers.forEach(browser => {
             dataByBrowser[browser] = categories.map(category => {
-                const group = DUMMY_DATA.find(g => g.category === category);
-                if (!group) return 0;
+                const isAccepted = category === 'Accepted';
 
-                const sessionUrls = Object.keys(group.sessions);
-                if (sessionUrls.length === 0) return 0;
+                // Find sessions for this browser and category
+                const relevantSessions = this.sessions.filter(s =>
+                    s.browser === browser && s.cookieBannerHandled === isAccepted
+                );
+
+                if (relevantSessions.length === 0) return 0;
 
                 let totalCookies = 0;
-                sessionUrls.forEach(url => {
-                    const sessionData = group.sessions[url];
-                    const browserData = sessionData[browser];
-                    const count = (browserData.firstparty.nontrakking.length || 0) +
-                        (browserData.firstparty.trakking.length || 0) +
-                        (browserData.thirdparty.length || 0);
-                    totalCookies += count;
+                relevantSessions.forEach(session => {
+                    const sessionIdNum = parseInt(session.id, 10) || session.id as any;
+                    const sessionData = this.analyticsData[sessionIdNum];
+
+                    if (sessionData) {
+                        const count = (sessionData.firstparty.nontracking.length || 0) +
+                            (sessionData.firstparty.tracking.length || 0) +
+                            (sessionData.thirdparty.length || 0);
+                        totalCookies += count;
+                    }
                 });
 
-                // Return Average
-                return parseFloat((totalCookies / sessionUrls.length).toFixed(1));
+                return parseFloat((totalCookies / relevantSessions.length).toFixed(1));
             });
         });
 

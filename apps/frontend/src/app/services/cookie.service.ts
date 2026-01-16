@@ -90,4 +90,23 @@ export class CookieService {
   getStats(sessionId: string): Observable<CookieStats> {
     return this.http.get<CookieStats>(`${this.apiUrl}/cookies/stats/${sessionId}`);
   }
+
+  /**
+   * Get analytics data from the analytics module
+   */
+  getAnalytics(): Observable<AnalyticsResult> {
+    return this.http.get<AnalyticsResult>(`${this.apiUrl}/analytics`);
+  }
+}
+
+export interface ClassifiedCookies {
+  firstparty: {
+    nontracking: Cookie[];
+    tracking: Cookie[];
+  };
+  thirdparty: Cookie[];
+}
+
+export interface AnalyticsResult {
+  [sessionId: number]: ClassifiedCookies;
 }

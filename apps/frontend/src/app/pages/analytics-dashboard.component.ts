@@ -1,12 +1,13 @@
 import { Component, OnInit, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CookieService, CrawlSession } from '../services/cookie.service';
+import { CookieService, CrawlSession, AnalyticsResult, ClassifiedCookies } from '../services/cookie.service';
 import { CookieOverviewChartComponent } from '../components/cookie-overview-chart.component';
 import { CookiesByDomainChartComponent } from '../components/cookies-by-domain-chart.component';
 import { CookieTableComponent } from '../components/cookie-table.component';
 import { SessionSummaryChartComponent } from '../components/session-summary-chart.component';
-import { DUMMY_DATA } from '../data/dummy-data';
+
+import { TxtFileUploadComponent } from './txt-file-upload/txt-file-upload';
 
 @Component({
   selector: 'app-analytics-dashboard',
@@ -17,13 +18,20 @@ import { DUMMY_DATA } from '../data/dummy-data';
     CookieOverviewChartComponent,
     CookiesByDomainChartComponent,
     CookieTableComponent,
-    SessionSummaryChartComponent
+    SessionSummaryChartComponent,
+    TxtFileUploadComponent
   ],
   template: `
     <div class="dashboard-container">
-      <app-cookies-by-domain-chart [stats]="stats"></app-cookies-by-domain-chart>
+      <header class="dashboard-header">
+        <h1>Cookie Analysis Dashboard</h1>
+        <p>Track and analyze cookie behavior across different browser configurations</p>
+        <app-txt-file-upload></app-txt-file-upload>
+      </header>
+
+      <app-cookies-by-domain-chart [sessions]="sessions" [analyticsData]="analyticsData"></app-cookies-by-domain-chart>
       
-      <app-session-summary-chart></app-session-summary-chart>
+      <app-session-summary-chart [sessions]="sessions" [analyticsData]="analyticsData"></app-session-summary-chart>
 
       <div class="filters-section">
         <h2>Filters</h2>
@@ -250,6 +258,7 @@ export class AnalyticsDashboardComponent implements OnInit {
   filteredSessions: CrawlSession[] = [];
   selectedSessionId = '';
   selectedConfig: string[] = [];
+  analyticsData: AnalyticsResult = {};
   stats: any = null;
   cookies: any[] = [];
   loading = false;
@@ -264,40 +273,45 @@ export class AnalyticsDashboardComponent implements OnInit {
 
   loadSessions() {
     this.loading = true;
+    this.error = null;
 
-    // Convert DUMMY_DATA to CrawlSession[]
-    const dummySessions: CrawlSession[] = [];
-    let idCounter = 1;
+    // Fetch real sessions
+    this.cookieService.getSessions().subscribe({
+      next: (sessions) => {
+        this.sessions = sessions;
+        this.applyFilters();
 
-    DUMMY_DATA.forEach(group => {
-      Object.entries(group.sessions).forEach(([url, data]) => {
-        Object.keys(data).forEach(browser => {
-          // Create a deterministic mock session
-          const isJs = (idCounter % 2 === 0);
-          const isAdBlock = (idCounter % 3 === 0);
-          const isCookie = (idCounter % 4 !== 0);
-
-          dummySessions.push({
-            id: `mock-session-${idCounter++}`,
-            url: url,
-            browser: browser,
-            jsEnabled: isJs,
-            adBlockerEnabled: isAdBlock,
-            cookieBannerHandled: isCookie,
-            createdAt: new Date()
-          });
-        });
-      });
+        // After loading sessions, load analytics data
+        this.loadAnalytics();
+      },
+      error: (err) => {
+        console.error('Error loading sessions', err);
+        this.error = 'Failed to load sessions from server.';
+        this.loading = false;
+      }
     });
+  }
 
-    this.sessions = dummySessions;
-    this.applyFilters();
-    this.loading = false;
+  loadAnalytics() {
+    this.cookieService.getAnalytics().subscribe({
+      next: (result) => {
+        this.analyticsData = result;
+        this.loading = false;
 
-    if (this.filteredSessions.length > 0) {
-      this.selectedSessionId = this.filteredSessions[0].id;
-      this.onSessionChange();
-    }
+        if (this.filteredSessions.length > 0) {
+          // Select first session by default if none selected
+          if (!this.selectedSessionId) {
+            this.selectedSessionId = this.filteredSessions[0].id;
+          }
+          this.onSessionChange();
+        }
+      },
+      error: (err) => {
+        console.error('Error loading analytics', err);
+        this.error = 'Failed to load analytics data.';
+        this.loading = false;
+      }
+    });
   }
 
   applyFilters() {
@@ -323,66 +337,71 @@ export class AnalyticsDashboardComponent implements OnInit {
 
   onSessionChange() {
     if (this.selectedSessionId) {
-      if (this.selectedSessionId.startsWith('mock-session-')) {
-        // Calculate stats from DUMMY_DATA
-        const session = this.sessions.find(s => s.id === this.selectedSessionId);
-        if (session) {
-          const url = session.url;
-          const browser = session.browser;
+      const sessionIdNum = parseInt(this.selectedSessionId, 10); // ID is string in frontend model but number in analytics map key if strictly creating map from DB IDs.
+      // However, usually API returns JSON with string keys or we access by string.
+      // Let's check analyticsData. The interface says [sessionId: number]. 
+      // But in JS object keys are strings. 
 
-          // Find the data in DUMMY_DATA
-          let foundSessionData: any = null;
-          for (const group of DUMMY_DATA) {
-            if (group.sessions[url]) {
-              foundSessionData = group.sessions[url];
-              break;
-            }
-          }
+      const sessionData = this.analyticsData[sessionIdNum] || this.analyticsData[this.selectedSessionId as any];
 
-          if (foundSessionData && foundSessionData[browser]) {
-            const browserData = foundSessionData[browser];
-            const firstPartyNonTracking = browserData.firstparty.nontrakking.length;
-            const firstPartyTracking = browserData.firstparty.trakking.length;
-            const thirdParty = browserData.thirdparty.length;
+      if (sessionData) {
+        const firstPartyNonTracking = sessionData.firstparty.nontracking.length;
+        const firstPartyTracking = sessionData.firstparty.tracking.length;
+        const thirdParty = sessionData.thirdparty.length;
 
-            this.stats = {
-              totalCookies: firstPartyNonTracking + firstPartyTracking + thirdParty,
-              thirdPartyCookies: thirdParty,
-              trackingCookies: firstPartyTracking,
-              firstPartyCookies: firstPartyNonTracking + firstPartyTracking,
-              byDomain: { 'example.com': firstPartyNonTracking, 'tracker.com': firstPartyTracking, 'ads.net': thirdParty } // Mock domain data
-            };
+        // Mocking per-domain stats for now based on available cookies in the analytics data
+        // Real implementation would aggregate this.analyticsData content by domain
+        const byDomain: { [key: string]: number } = {};
 
-            // Mock cookies list
-            this.cookies = [
-              { name: 'session_id', domain: 'example.com', value: 'xyz', isThirdParty: false, isTracking: false },
-              { name: '_ga', domain: 'tracker.com', value: 'GA1.2.3', isThirdParty: false, isTracking: true },
-              { name: 'ad_id', domain: 'ads.net', value: '123', isThirdParty: true, isTracking: true }
-            ];
-            return;
-          }
-        }
+        const processCookies = (cookies: any[]) => {
+          cookies.forEach(c => {
+            byDomain[c.domain] = (byDomain[c.domain] || 0) + 1;
+          });
+        };
+
+        processCookies(sessionData.firstparty.nontracking);
+        processCookies(sessionData.firstparty.tracking);
+        processCookies(sessionData.thirdparty);
+
+        this.stats = {
+          totalCookies: firstPartyNonTracking + firstPartyTracking + thirdParty,
+          thirdPartyCookies: thirdParty,
+          trackingCookies: firstPartyTracking,
+          firstPartyCookies: firstPartyNonTracking + firstPartyTracking,
+          byDomain: byDomain
+        };
+
+        // Combine all cookies for the table
+        this.cookies = [
+          ...sessionData.firstparty.nontracking.map(c => ({ ...c, isThirdParty: false, isTracking: false })),
+          ...sessionData.firstparty.tracking.map(c => ({ ...c, isThirdParty: false, isTracking: true })),
+          ...sessionData.thirdparty.map(c => ({ ...c, isThirdParty: true, isTracking: false })) // Assuming 3rd party are not tracking? Or unknown? logic in backend just separates them.
+        ];
+
+      } else {
+        // Fallback or empty if no analytics for this session yet
+        this.stats = {
+          totalCookies: 0, thirdPartyCookies: 0, trackingCookies: 0, firstPartyCookies: 0, byDomain: {}
+        };
+        this.cookies = [];
+
+        // Try fetching individual stats if analytics huge blob missing?
+        // Kept for fallback but usually analytics service covers it.
+        this.cookieService.getStats(this.selectedSessionId).subscribe({
+          next: (stats) => {
+            if (!this.stats || this.stats.totalCookies === 0) this.stats = stats;
+          },
+          error: () => { }
+        });
+
+        this.cookieService.getCookies(this.selectedSessionId).subscribe({
+          next: (cookies) => {
+            if (this.cookies.length === 0) this.cookies = cookies;
+          },
+          error: () => { }
+        });
       }
 
-      this.cookieService.getStats(this.selectedSessionId).subscribe({
-        next: (stats) => {
-          this.stats = stats;
-        },
-        error: (err) => {
-          console.error('Error loading stats', err);
-          this.error = 'Failed to load stats for the selected session.';
-        },
-      });
-
-      // Load Cookies List
-      this.cookieService.getCookies(this.selectedSessionId).subscribe({
-        next: (cookies) => {
-          this.cookies = cookies;
-        },
-        error: (err) => {
-          console.error('Error loading cookie list', err);
-        }
-      });
     } else {
       this.stats = null;
       this.cookies = [];

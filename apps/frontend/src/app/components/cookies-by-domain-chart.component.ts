@@ -25,7 +25,7 @@ ChartJS.register(
 );
 
 // Define interfaces for the dummy data structure
-import { DUMMY_DATA, DummyGroup } from '../data/dummy-data';
+import { CrawlSession, AnalyticsResult } from '../services/cookie.service';
 
 @Component({
     selector: 'app-cookies-by-domain-chart',
@@ -38,7 +38,7 @@ import { DUMMY_DATA, DummyGroup } from '../data/dummy-data';
             <button (click)="layout = 'column'" [class.active]="layout === 'column'">Stacked</button>
         </div>
         <div class="charts-container" [ngClass]="layout">
-            <div class="chart-wrapper" *ngFor="let group of dummyData; let i = index">
+            <div class="chart-wrapper" *ngFor="let group of groupedSessions; let i = index">
                 <h3>Category: {{ group.category }}</h3>
                 <div class="scroll-container">
                     <div class="chart-inner" [style.min-width.px]="getMinWidth(group)">
@@ -118,9 +118,10 @@ import { DUMMY_DATA, DummyGroup } from '../data/dummy-data';
 })
 export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnChanges {
     @ViewChildren('canvas') canvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
-    @Input() stats?: CookieStats;
+    @Input() sessions: CrawlSession[] = [];
+    @Input() analyticsData: AnalyticsResult = {};
 
-    public dummyData = DUMMY_DATA;
+    public groupedSessions: { category: string, sessions: CrawlSession[] }[] = [];
     public layout: 'row' | 'column' = 'row';
     private chartInstances: ChartJS[] = [];
 
@@ -132,12 +133,10 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
         this.renderCharts();
     }
 
-    ngOnChanges(): void {
-        this.renderCharts();
-    }
 
-    getMinWidth(group: DummyGroup): number {
-        const sessionCount = Object.keys(group.sessions).length;
+
+    getMinWidth(group: { category: string, sessions: CrawlSession[] }): number {
+        const sessionCount = group.sessions.length;
         // Make sure there is enough space. 30px per session minimum.
         return Math.max(800, sessionCount * 40);
     }
@@ -145,17 +144,42 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
     private renderCharts() {
         if (!this.canvasRefs) return;
 
+        // Group sessions
+        this.groupedSessions = [
+            {
+                category: 'Accepted',
+                sessions: this.sessions.filter(s => s.cookieBannerHandled)
+            },
+            {
+                category: 'Ignored/Rejected',
+                sessions: this.sessions.filter(s => !s.cookieBannerHandled)
+            }
+        ];
+
+        // Wait for view update with setTimeout or assume change detection passes?
+        // Actually, we can't reliably render canvas immediately after changing groupedSessions because logic relies on *ngFor canvasRefs.
+        // We need CD to run.
+        // Quick fix: renderCharts logic is separated. But canvasRefs needs to match grouping.
+        // A better approach in Angular is separate component per chart or direct logic.
+        // For now, let's assume we call this only after view init / changes. But wait, changing groupedSessions changes DOM.
+        // We should move grouping to OnChanges and triggering render after a tick.
+
+    }
+
+    private drawCharts() {
+        if (!this.canvasRefs || this.canvasRefs.length !== this.groupedSessions.length) return;
+
         this.chartInstances.forEach(c => c.destroy());
         this.chartInstances = [];
 
         this.canvasRefs.forEach((canvasRef, index) => {
-            const group = this.dummyData[index];
+            const group = this.groupedSessions[index];
             if (!group) return;
 
             const ctx = canvasRef.nativeElement.getContext('2d');
             if (!ctx) return;
 
-            const urls = Object.keys(group.sessions);
+            const urls = group.sessions.map(s => s.url);
             const browsers = ['Chrome', 'Firefox', 'Edge'];
 
             const browserColors: { [key: string]: string } = {
@@ -165,12 +189,17 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
             };
 
             const datasets = browsers.map(browser => {
-                const dataPoints = urls.map(url => {
-                    const sessionData = group.sessions[url];
-                    const browserData = sessionData[browser];
-                    return (browserData.firstparty.nontrakking.length || 0) +
-                        (browserData.firstparty.trakking.length || 0) +
-                        (browserData.thirdparty.length || 0);
+                const dataPoints = group.sessions.map(session => {
+                    // Only populate if this session matches the browser
+                    if (session.browser !== browser) return 0;
+
+                    const sessionIdNum = parseInt(session.id, 10) || session.id as any;
+                    const sessionData = this.analyticsData[sessionIdNum];
+                    if (!sessionData) return 0;
+
+                    return (sessionData.firstparty.nontracking.length || 0) +
+                        (sessionData.firstparty.tracking.length || 0) +
+                        (sessionData.thirdparty.length || 0);
                 });
 
                 return {
@@ -202,7 +231,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                     },
                     plugins: {
                         legend: {
-                            display: false
+                            display: true
                         },
                         title: {
                             display: false,
@@ -219,7 +248,10 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                             rotation: -90,
                             offset: 4,
                             display: (context: any) => {
-                                return context.datasetIndex === datasets.length - 1;
+                                // Find which dataset is active for this index to avoid cluttered labels if possible, 
+                                // OR just show total? 
+                                // Since we stack and user only has 1 browser, only 1 value > 0.
+                                return context.dataset.data[context.dataIndex] > 0;
                             },
                             formatter: (value: any, context: any) => {
                                 const label = context.chart.data.labels[context.dataIndex];
@@ -242,7 +274,9 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                             },
                             ticks: {
                                 maxRotation: 90,
-                                minRotation: 90
+                                minRotation: 90,
+                                // Hide labels on X axis if too crowded, data labels show them on bars
+                                display: false
                             }
                         },
                         y: {
@@ -259,5 +293,20 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
 
             this.chartInstances.push(chart);
         });
+    }
+
+    ngOnChanges(): void {
+        this.groupedSessions = [
+            {
+                category: 'Accepted',
+                sessions: this.sessions.filter(s => s.cookieBannerHandled)
+            },
+            {
+                category: 'Ignored/Rejected',
+                sessions: this.sessions.filter(s => !s.cookieBannerHandled)
+            }
+        ];
+        // Give ViewChild time to update
+        setTimeout(() => this.drawCharts(), 0);
     }
 }
