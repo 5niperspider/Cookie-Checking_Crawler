@@ -38,9 +38,42 @@ CREATE TABLE cookies (
 INSERT INTO
     config (browser, cookies, js, ad_blocker)
 VALUES
+    ('chrome', 'no', false, false),
+    ('chrome', 'opt', false, false),
+    ('chrome', 'yes', false, false),
+    ('chrome', 'no', true, false),
+    ('chrome', 'opt', true, false),
     ('chrome', 'yes', true, false),
+    ('chrome', 'no', false, true),
+    ('chrome', 'opt', false, true),
+    ('chrome', 'yes', false, true),
+    ('chrome', 'no', true, true),
+    ('chrome', 'opt', true, true),
+    ('chrome', 'yes', true, true),
+    ('firefox', 'no', false, false),
+    ('firefox', 'opt', false, false),
+    ('firefox', 'yes', false, false),
+    ('firefox', 'no', true, false),
+    ('firefox', 'opt', true, false),
+    ('firefox', 'yes', true, false),
+    ('firefox', 'no', false, true),
+    ('firefox', 'opt', false, true),
+    ('firefox', 'yes', false, true),
+    ('firefox', 'no', true, true),
     ('firefox', 'opt', true, true),
-    ('brave', 'no', true, true);
+    ('firefox', 'yes', true, true),
+    ('brave', 'no', false, false),
+    ('brave', 'opt', false, false),
+    ('brave', 'yes', false, false),
+    ('brave', 'no', true, false),
+    ('brave', 'opt', true, false),
+    ('brave', 'yes', true, false),
+    ('brave', 'no', false, true),
+    ('brave', 'opt', false, true),
+    ('brave', 'yes', false, true),
+    ('brave', 'no', true, true),
+    ('brave', 'opt', true, true),
+    ('brave', 'yes', true, true);
 
 -- SEED: SESSION
 INSERT INTO
