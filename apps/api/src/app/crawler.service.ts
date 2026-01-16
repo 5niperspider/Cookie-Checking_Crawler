@@ -7,10 +7,13 @@ import { DbService, NewCookie } from './db/db.service';
 export class CrawlerService {
     constructor( private readonly dbservice: DbService) {}
 
-   async crawler(url:string , session_id:number): Promise<boolean>{
+   async crawler(url:string, session_id: number, config_id: number): Promise<boolean>{
+
+        const config = await this.dbservice.getConfigById(config_id);
 
         const browser = await puppeteer.launch();
         const page = await browser.newPage();
+        page.setJavaScriptEnabled(config.js);
         await page.goto(url,{ waitUntil: 'networkidle2' } );
         const cookies = await page.cookies();
 
