@@ -81,7 +81,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit {
         if (!ctx) return;
 
         // Process Data
-        const browsers = ['Chrome', 'Firefox', 'Edge'];
+        const browsers = ['Chrome', 'Firefox', 'Brave'];
         // Group by what? Real data doesn't have 'categories' like 'Accept/Reject' explicitly unless we infer from cookieBannerHandled
         // Let's use 'Cookie Action' as categories: 'Accepted' (handled=true), 'Ignored/Rejected' (handled=false)
         const categories = ['Accepted', 'Ignored/Rejected'];
