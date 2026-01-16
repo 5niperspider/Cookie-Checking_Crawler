@@ -3,8 +3,7 @@ CREATE TABLE config (
     id SERIAL PRIMARY KEY,
     browser VARCHAR(20) CHECK (browser IN ('chrome', 'firefox', 'brave')),
     cookies VARCHAR(10) CHECK (cookies IN ('yes', 'no', 'opt')),
-    js BOOLEAN NOT NULL,
-    ad_blocker BOOLEAN NOT NULL
+    js BOOLEAN NOT NULL
 );
 
 -- SESSION
@@ -36,44 +35,26 @@ CREATE TABLE cookies (
 
 -- SEED: CONFIG
 INSERT INTO
-    config (browser, cookies, js, ad_blocker)
+    config (browser, cookies, js)
 VALUES
-    ('chrome', 'no', false, false),
-    ('chrome', 'opt', false, false),
-    ('chrome', 'yes', false, false),
-    ('chrome', 'no', true, false),
-    ('chrome', 'opt', true, false),
-    ('chrome', 'yes', true, false),
-    ('chrome', 'no', false, true),
-    ('chrome', 'opt', false, true),
-    ('chrome', 'yes', false, true),
-    ('chrome', 'no', true, true),
-    ('chrome', 'opt', true, true),
-    ('chrome', 'yes', true, true),
-    ('firefox', 'no', false, false),
-    ('firefox', 'opt', false, false),
-    ('firefox', 'yes', false, false),
-    ('firefox', 'no', true, false),
-    ('firefox', 'opt', true, false),
-    ('firefox', 'yes', true, false),
-    ('firefox', 'no', false, true),
-    ('firefox', 'opt', false, true),
-    ('firefox', 'yes', false, true),
-    ('firefox', 'no', true, true),
-    ('firefox', 'opt', true, true),
-    ('firefox', 'yes', true, true),
-    ('brave', 'no', false, false),
-    ('brave', 'opt', false, false),
-    ('brave', 'yes', false, false),
-    ('brave', 'no', true, false),
-    ('brave', 'opt', true, false),
-    ('brave', 'yes', true, false),
-    ('brave', 'no', false, true),
-    ('brave', 'opt', false, true),
-    ('brave', 'yes', false, true),
-    ('brave', 'no', true, true),
-    ('brave', 'opt', true, true),
-    ('brave', 'yes', true, true);
+    ('chrome', 'no', false),
+    ('chrome', 'opt', false),
+    ('chrome', 'yes', false),
+    ('chrome', 'no', true),
+    ('chrome', 'opt', true),
+    ('chrome', 'yes', true),
+    ('firefox', 'no', false),
+    ('firefox', 'opt', false),
+    ('firefox', 'yes', false),
+    ('firefox', 'no', true),
+    ('firefox', 'opt', true),
+    ('firefox', 'yes', true),
+    ('brave', 'no', false),
+    ('brave', 'opt', false),
+    ('brave', 'yes', false),
+    ('brave', 'no', true),
+    ('brave', 'opt', true),
+    ('brave', 'yes', true),
 
 -- SEED: SESSION
 INSERT INTO
