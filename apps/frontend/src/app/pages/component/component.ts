@@ -27,6 +27,7 @@ export class MyComponent {
 
   // eslint-disable-next-line @angular-eslint/prefer-inject
   constructor(private http: HttpClient) { }
+  
   sendRequest() {
     this.loading = true;
     this.error = '';
@@ -35,7 +36,7 @@ export class MyComponent {
     const apiUrl = 'http://localhost:3000/api/sessions';
     const body: SessionRequest = {
       url: this.url,
-      config: [1, 3]
+      config: []
     };
 
     this.http.post<SessionResponse>(apiUrl, body).subscribe({
@@ -51,5 +52,4 @@ export class MyComponent {
       }
     });
   }
-
 }

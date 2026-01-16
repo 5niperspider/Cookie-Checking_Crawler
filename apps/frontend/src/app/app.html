@@ -1,2 +1,19 @@
-<app-my-component></app-my-component>
-<router-outlet></router-outlet>
+<div class="max-w-6xl mx-auto px-6 pt-6">
+
+  <!-- OBERER BEREICH: zwei Komponenten -->
+  <div class="flex flex-col md:flex-row gap-8 justify-center items-start">
+    <div class="md:w-1/2">
+      <app-txt-file-upload></app-txt-file-upload>
+    </div>
+
+    <div class="md:w-1/2">
+      <app-my-component></app-my-component>
+    </div>
+  </div>
+
+  <!-- ROUTER-OUTLET: DIREKT darunter -->
+  <div class="mt-0">
+    <router-outlet></router-outlet>
+  </div>
+
+</div>

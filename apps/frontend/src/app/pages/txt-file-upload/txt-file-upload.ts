@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 
@@ -9,14 +9,14 @@ import { HttpClient } from '@angular/common/http';
     templateUrl: './txt-file-upload.html',
 })
 export class TxtFileUploadComponent {
+    private http = inject(HttpClient);
+    
     selectedFile: File | null = null;
     lines: string[] = [];
 
     loading = false;
     error: string | null = null;
     result: any = null;
-
-    constructor(private http: HttpClient) { }
 
     onFileSelected(event: Event): void {
         const input = event.target as HTMLInputElement;
@@ -47,6 +47,8 @@ export class TxtFileUploadComponent {
             return;
         }
 
+        this.loading = true;
+
         const reader = new FileReader();
 
         reader.onload = () => {
@@ -58,6 +60,7 @@ export class TxtFileUploadComponent {
                 .filter((l) => l.length > 0);
 
             if (!this.lines.length) {
+                this.loading = false;
                 return;
             }
 
@@ -67,6 +70,7 @@ export class TxtFileUploadComponent {
         reader.onerror = (err) => {
             console.error('Fehler beim Lesen der Datei', err);
             this.error = 'Fehler beim Lesen der Datei.';
+            this.loading = false;
         };
 
         reader.readAsText(this.selectedFile, 'utf-8');
@@ -74,7 +78,16 @@ export class TxtFileUploadComponent {
 
 
     private sendLines(): void {
-        this.http.post('http://localhost:3000/api/sessions', this.lines).subscribe();
+        this.http.post('http://localhost:3000/api/sessions', this.lines).subscribe({
+            next: (response) => {
+                this.result = response;
+                this.loading = false;
+            },
+            error: (error) => {
+                this.error = `Fehler: ${error.status} - ${error.statusText || error.message}`;
+                this.loading = false;
+            }
+        });
     }
 
 }
