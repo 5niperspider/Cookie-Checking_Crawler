@@ -33,7 +33,6 @@ export interface NewConfig {
     browser: 'chrome' | 'firefox' | 'brave';
     cookies: 'yes' | 'no' | 'opt';
     js: boolean;
-    adBlocker: boolean;
 }
 
 export interface Config {
@@ -41,7 +40,6 @@ export interface Config {
     browser: 'chrome' | 'firefox' | 'brave';
     cookies: 'yes' | 'no' | 'opt';
     js: boolean;
-    ad_blocker: boolean;
 }
 
 @Injectable()
@@ -154,7 +152,6 @@ export class DbService implements OnModuleDestroy {
                 s.created_at as "createdAt",
                 c.browser,
                 c.js as "jsEnabled",
-                c.ad_blocker as "adBlockerEnabled",
                 CASE WHEN c.cookies = 'yes' OR c.cookies = 'opt' THEN true ELSE false END as "cookieBannerHandled"
             FROM session s
             LEFT JOIN config c ON s.config_id = c.id
@@ -274,8 +271,7 @@ export class DbService implements OnModuleDestroy {
             INSERT INTO config (
                 browser,
                 cookies,
-                js,
-                ad_blocker
+                js
             )
             VALUES ($1, $2, $3, $4)
             RETURNING *;
@@ -284,7 +280,6 @@ export class DbService implements OnModuleDestroy {
             configData.browser,
             configData.cookies,
             configData.js,
-            configData.adBlocker,
         ];
 
         const { rows } = await this.query(sql, params);

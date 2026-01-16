@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "db:init": "dotenv -e .env -- docker compose up -d db && sleep 5 && dotenv -e .env -- docker exec -i cookie-db psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -f /docker-entrypoint-initdb.d/init.sql",
+    "db:init": "node -e \"require('child_process').execSync(process.platform === 'win32' ? 'db-init.bat' : 'bash db-init.sh', {stdio: 'inherit'})\"",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "start:backend": "nx serve api",
@@ -69,7 +69,7 @@
     "dotenv-cli": "^11.0.0",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
-    "jest": "^30.0.2",
+    "jest": "^30.2.0",
     "jest-environment-node": "^30.0.2",
     "jest-util": "^30.0.2",
     "jsonc-eslint-parser": "^2.1.0",
