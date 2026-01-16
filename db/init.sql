@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS cookies, session, config CASCADE;
+
 -- CONFIG
 CREATE TABLE config (
     id SERIAL PRIMARY KEY,
@@ -54,7 +56,7 @@ VALUES
     ('brave', 'yes', false),
     ('brave', 'no', true),
     ('brave', 'opt', true),
-    ('brave', 'yes', true),
+    ('brave', 'yes', true);
 
 -- SEED: SESSION
 INSERT INTO
