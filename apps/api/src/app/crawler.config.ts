@@ -1,3 +1,7 @@
+// apps/api/src/crawler.config.ts
+import { Injectable } from '@nestjs/common';
+import { DbService, Config } from './db/db.service';
+
 interface BrowserConfig {
   headless: boolean;
   args: string[];
@@ -21,20 +25,17 @@ export interface CrawlerConfig {
   browserConfig: BrowserConfig;
   timeouts: Timeouts;
   cookieBannerSelectors: CookieBannerSelectors;
+  cookieStrategy: CookieStrategy;
+  jsEnabled: boolean;
 }
 
-export type CrawlerConfigOverrides = Partial<{
-  browserConfigs: Partial<Record<BrowserType, Partial<BrowserConfig>>>;
-  timeouts: Partial<Timeouts>;
-  cookieBannerSelectors: Partial<Record<CookieStrategy, string[]>>;
-}>;
-
+@Injectable()
 export class CrawlerConfigService {
   private BROWSER_CONFIGS: Record<BrowserType, BrowserConfig>;
   private TIMEOUTS: Timeouts;
   private COOKIE_BANNER_SELECTORS: CookieBannerSelectors;
 
-  constructor(overrides?: CrawlerConfigOverrides) {
+  constructor(private readonly dbService: DbService) {
     this.BROWSER_CONFIGS = {
       chrome: {
         headless: true,
@@ -75,13 +76,6 @@ export class CrawlerConfigService {
       cookieBanner: 5000,
     };
 
-    /**
-     * WICHTIG:
-     * - `button:contains("...")` funktioniert NICHT mit `page.waitForSelector()` (CSS).
-     * - Nutze stabile Attribute (data-testid) + CSS-Fallbacks.
-     * - Textmatching (Akzeptieren/Anpassen) macht man separat (evaluate/xpath),
-     *   nicht als CSS-Selektor.
-     */
     this.COOKIE_BANNER_SELECTORS = {
       accept: [
         '[data-testid="banner-accept-all-button"]',
@@ -118,87 +112,71 @@ export class CrawlerConfigService {
         '[aria-label*="settings" i]',
       ],
     };
-
-    // if (overrides?.browserConfigs) {
-    //   for (const key of Object.keys(overrides.browserConfigs) as BrowserType[]) {
-    //     const base = this.BROWSER_CONFIGS[key];
-    //     const ov = overrides.browserConfigs[key] ?? {};
-
-    //     this.BROWSER_CONFIGS[key] = {
-    //       ...base,
-    //       ...ov,
-    //       defaultViewport: {
-    //         ...base.defaultViewport,
-    //         ...(ov.defaultViewport ?? {}),
-    //       },
-    //       // args komplett ersetzen, wenn overrides args liefern
-    //       args: ov.args ?? base.args,
-    //     };
-    //   }
-    // }
-
-    if (overrides?.timeouts) {
-      this.TIMEOUTS = { ...this.TIMEOUTS, ...overrides.timeouts };
-    }
-    if (overrides?.cookieBannerSelectors) {
-      this.COOKIE_BANNER_SELECTORS = {
-        ...this.COOKIE_BANNER_SELECTORS,
-        ...overrides.cookieBannerSelectors,
-      };
-    }
   }
 
   /**
-   * Gibt komplette Config zurück
+   * Récupère la config depuis la DB et la transforme en CrawlerConfig
    */
-  getConfig(browserType: BrowserType = 'chrome'): CrawlerConfig {
-    const browserConfig = this.BROWSER_CONFIGS[browserType];
-    if (!browserConfig) {
-      throw new Error(`Unknown browserType: ${browserType}`);
+  async getConfigFromDatabase(configId: number): Promise<CrawlerConfig> {
+    const dbConfig = await this.dbService.getConfigById(configId);
+
+    if (!dbConfig) {
+      throw new Error(`Config with ID ${configId} not found in database`);
     }
+
+    return this._mapDbConfigToCrawlerConfig(dbConfig);
+  }
+
+  /**
+   * Transforme un Config (DB) -> CrawlerConfig (utilisé par le crawler)
+   */
+  private _mapDbConfigToCrawlerConfig(dbConfig: Config): CrawlerConfig {
+    const browserType: BrowserType = dbConfig.browser;
+
+    const baseBrowserConfig = this.BROWSER_CONFIGS[browserType];
+    if (!baseBrowserConfig) {
+      throw new Error(`Unknown browser in DB: ${browserType}`);
+    }
+
+    const finalBrowserConfig: BrowserConfig = { ...baseBrowserConfig };
+    const cookieStrategy: CookieStrategy = this._mapDbCookieStrategy(dbConfig.cookies);
+    const jsEnabled = dbConfig.js;
 
     return {
       browser: browserType,
-      browserConfig,
+      browserConfig: finalBrowserConfig,
       timeouts: this.TIMEOUTS,
       cookieBannerSelectors: this.COOKIE_BANNER_SELECTORS,
+      cookieStrategy,
+      jsEnabled,
     };
   }
 
-  getBrowserConfig(browserType: BrowserType = 'chrome'): BrowserConfig {
-    const cfg = this.BROWSER_CONFIGS[browserType];
-    if (!cfg) throw new Error(`Unknown browserType: ${browserType}`);
-    return cfg;
-  }
-
-  getTimeouts(): Timeouts {
-    return this.TIMEOUTS;
-  }
-
-  getCookieBannerSelectors(): CookieBannerSelectors {
-    return this.COOKIE_BANNER_SELECTORS;
-  }
-
   /**
-   * SPÄTER: Config aus Datenbank laden
+   * DB Cookie-Wert → Cookie-Strategie
+   * 'yes' | 'no' | 'opt' → 'accept' | 'reject' | 'optional'
    */
-  async getConfigFromDatabase(configId: string): Promise<CrawlerConfig> {
-    console.log('Loading config for:', configId);
-    throw new Error('Not implemented yet');
+  private _mapDbCookieStrategy(dbCookies: 'yes' | 'no' | 'opt'): CookieStrategy {
+    switch (dbCookies) {
+      case 'yes':
+        return 'accept';
+      case 'no':
+        return 'reject';
+      case 'opt':
+        return 'optional';
+      default:
+        throw new Error(`Unknown cookie strategy in DB: ${dbCookies}`);
+    }
   }
 
   private _getBraveExecutablePath(): string {
     const platform = process.platform;
     if (platform === 'win32') {
       return 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe';
-    
     }
     if (platform === 'linux') {
       return '/usr/bin/brave-browser';
     }
-
-    // macOS
     return '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
   }
-
 }
