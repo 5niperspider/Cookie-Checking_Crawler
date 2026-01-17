@@ -46,7 +46,7 @@ export class SchedulerService {
             const session = await this.dbService.createSession({ url: url, configId: conf});
             task.sessions.push(session.id);
 
-            const done = await this.crawlerService.crawler(url, session.id, conf);
+            const done = await this.crawlerService.crawler(url, session.id);
 
             if (await done) {
                 task.sessionsDone.push(session.id);
