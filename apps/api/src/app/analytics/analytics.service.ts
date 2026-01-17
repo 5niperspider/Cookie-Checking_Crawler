@@ -37,7 +37,26 @@ export class AnalyticsService {
 
   private loadTrackingPatterns(): string[] {
     try {
-      const filePath = path.join(__dirname, 'patter.csv');
+      // Versuche mehrere mögliche Pfade, da __dirname je nach Laufzeitumgebung variiert
+      const possiblePaths = [
+        path.join(__dirname, 'analytics', 'patter.csv'),
+        path.join(__dirname, '..', 'analytics', 'patter.csv'),
+        path.join(process.cwd(), 'dist', 'apps', 'api', 'app', 'analytics', 'patter.csv'),
+        path.join(process.cwd(), 'apps', 'api', 'src', 'app', 'analytics', 'patter.csv'),
+      ];
+
+      let filePath = '';
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+          filePath = p;
+          break;
+        }
+      }
+
+      if (!filePath) {
+        throw new Error(`patter.csv not found in any of: ${possiblePaths.join(', ')}`);
+      }
+
       const data = fs.readFileSync(filePath, 'utf-8');
       const lines = data.split('\n').filter(line => line.trim());
       return lines.map(line => line.split(',')[0].trim()).filter(pattern => pattern);

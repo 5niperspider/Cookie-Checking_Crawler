@@ -17,7 +17,7 @@ export class CrawlerService {
   
         try {  
             // Config holen  
-            const config = this.configService.getConfig(browserType);  
+            const config = this.configService.getConfig(browserType as 'chrome' | 'firefox' | 'brave');  
               
             console.log(`Starting crawler with ${browserType} for URL: ${url}`);  
               
