@@ -34,10 +34,7 @@ export class MyComponent {
     this.result = null;
 
     const apiUrl = 'http://localhost:3000/api/sessions';
-    const body: SessionRequest = {
-      url: this.url,
-      config: []
-    };
+    const body: string[] = [this.url];
 
     this.http.post<SessionResponse>(apiUrl, body).subscribe({
       next: (response) => {
