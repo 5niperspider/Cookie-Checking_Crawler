@@ -23,11 +23,6 @@ import { TxtFileUploadComponent } from './txt-file-upload/txt-file-upload';
   ],
   template: `
     <div class="dashboard-container">
-      <header class="dashboard-header">
-        <h1>Cookie Analysis Dashboard</h1>
-        <p>Track and analyze cookie behavior across different browser configurations</p>
-        <app-txt-file-upload></app-txt-file-upload>
-      </header>
 
       <app-cookies-by-domain-chart [sessions]="sessions" [analyticsData]="analyticsData"></app-cookies-by-domain-chart>
       
