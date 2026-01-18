@@ -215,6 +215,23 @@ export class CrawlerConfigService {
       console.log(`No ${config.cookieStrategy} button found`);
     }
   }
+  private async waitForCookieBanner(page: Page, timeout: number): Promise<boolean> {
+    try {
+      await page.waitForFunction(
+        () => {
+          if (
+            window['OneTrust'] ||
+            window['UC_UI'] ||
+            window['Cookiebot'] ||
+            window['__tcfapi'] ||
+            window['Didomi']
+          ) {
+            return true;
+          }
+          const keywords = ['cookie', 'consent', 'gdpr', 'datenschutz'];
+          const elements = Array.from(document.querySelectorAll(
+            'div, section, aside, [role="dialog"], [role="banner"]',
+          ));
 
   private async handleCookiePreferences(page: Page): Promise<void> {
     console.log('Handling cookie preferences dialog...');
@@ -421,7 +438,7 @@ export class CrawlerConfigService {
 
     return {
       browser: browserType,
-      browserConfig,
+      browserConfig: baseBrowserConfig,
       timeouts: this.TIMEOUTS,
       cookieBannerSelectors: this.COOKIE_BANNER_SELECTORS,
       cookieStrategy: this._mapDbCookieStrategy(dbConfig.cookies),
