@@ -152,7 +152,7 @@ export class DbService implements OnModuleDestroy {
                 s.created_at as "createdAt",
                 c.browser,
                 c.js as "jsEnabled",
-                CASE WHEN c.cookies = 'yes' OR c.cookies = 'opt' THEN true ELSE false END as "cookieBannerHandled"
+                c.cookies as "cookieBannerHandled"
             FROM session s
             LEFT JOIN config c ON s.config_id = c.id
             ORDER BY s.id ASC;

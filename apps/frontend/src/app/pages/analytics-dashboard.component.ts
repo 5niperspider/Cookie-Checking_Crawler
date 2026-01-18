@@ -20,9 +20,9 @@ import { SessionSummaryChartComponent } from '../components/session-summary-char
   ],
   template: `
     <div class="dashboard-container">
-      <app-cookies-by-domain-chart [stats]="stats"></app-cookies-by-domain-chart>
+      <app-cookies-by-domain-chart [stats]="stats" [sessions]="sessions"></app-cookies-by-domain-chart>
       
-      <app-session-summary-chart></app-session-summary-chart>
+      <app-session-summary-chart [sessions]="sessions"></app-session-summary-chart>
 
       <div class="filters-section">
         <h2>Filters</h2>
@@ -31,7 +31,7 @@ import { SessionSummaryChartComponent } from '../components/session-summary-char
           <select id="sessionSelect" [(ngModel)]="selectedSessionId" (change)="onSessionChange()">
             <option value="">-- Select a session --</option>
             <option *ngFor="let session of sessions" [value]="session.id">
-              {{ session.createdAt | date:'short' }} | {{ session.url }} | {{ session.browser || 'Unknown' }} | JS: {{ session.jsEnabled ? 'Yes' : 'No' }} | Banner: {{ session.cookieBannerHandled ? 'Yes' : 'No' }}
+              {{ session.createdAt | date:'short' }} | {{ session.url }} | {{ session.browser || 'Unknown' }} | JS: {{ session.jsEnabled ? 'Yes' : 'No' }} | Banner: {{ session.cookieBannerHandled }}
             </option>
           </select>
         </div>
