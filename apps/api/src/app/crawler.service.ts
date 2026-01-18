@@ -19,13 +19,17 @@ export class CrawlerService {
       const config: CrawlerConfig = await this.configService.getConfigFromDatabase(configId);
       console.log(`[Session ${sessionId}] Config loaded: Browser=${config.browser}, Strategy=${config.cookieStrategy}, JS=${config.jsEnabled}`);
 
+      const isFirefox = config.browser === 'firefox';
+
+      console.log(`[Puppeteer] Launching ${config.browser}...`);
       browser = await puppeteer.launch({
+        browser: isFirefox ? 'firefox' : 'chrome',
         headless: config.browserConfig.headless,
         args: config.browserConfig.args,
         defaultViewport: config.browserConfig.defaultViewport,
         executablePath: config.browserConfig.executablePath,
       }).catch(error => {
-        console.error(`Failed to launch ${config.browser} browser:`, error.message);
+        console.error(`Failed to launch ${config.browser}:`, error.message);
         if (error.message.includes('ENOENT')) {
           throw new Error(`${config.browser} executable not found. Please install ${config.browser} or check the executable path.`);
         }
@@ -36,9 +40,10 @@ export class CrawlerService {
       });
 
       page = await browser.newPage();
-      await page.setJavaScriptEnabled(config.jsEnabled);
-
-      // 3. Timeouts
+      if (!isFirefox) {
+        await page.setJavaScriptEnabled(config.jsEnabled);
+      }
+      
       page.setDefaultNavigationTimeout(config.timeouts.navigation);
       page.setDefaultTimeout(config.timeouts.waitForSelector);
       
@@ -47,11 +52,13 @@ export class CrawlerService {
         timeout: config.timeouts.navigation,
       });
       await this.configService.handleCookieBanner(page, config);
+      
       try {
         await page.waitForNetworkIdle({ timeout: 5000 });
       } catch {
-        // Ignore timeout errors here
+        // Ignore timeout errors
       }
+
       const cookies = await page.cookies();
       console.log(`[Session ${sessionId}] Found ${cookies.length} cookies with config ${configId}`);
       for (const cookie of cookies) {
@@ -59,7 +66,6 @@ export class CrawlerService {
         if (cookie.expires && cookie.expires > 0) {
           expirationDate = new Date(cookie.expires * 1000);
         }
-
         const cookieData: NewCookie = {
           sessionId: sessionId,
           name: cookie.name,

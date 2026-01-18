@@ -51,10 +51,13 @@ export class CrawlerConfigService {
       },
 
       firefox: {
-        executablePath: this._getFirefoxExecutablePath(),
         headless: true,
-        args: ['--width=1920', '--height=1080'],
+        args: [
+          '--width=1920',
+          '--height=1080',
+        ],
         defaultViewport: { width: 1920, height: 1080 },
+        executablePath: this._getFirefoxExecutablePath(),
       },
 
       brave: {
@@ -178,7 +181,6 @@ export class CrawlerConfigService {
     return this._mapDbConfigToCrawlerConfig(dbConfig);
   }
 
-
   async handleCookieBanner(page: Page, config: CrawlerConfig): Promise<void> {
     if (!config.jsEnabled) {
       console.log('JS disabled – skipping cookie banner handling');
@@ -197,15 +199,110 @@ export class CrawlerConfigService {
       await this.safeClick(button);
       console.log(`Clicked ${config.cookieStrategy} via selector`);
       await new Promise(resolve => setTimeout(resolve, 1000));
+      if (config.cookieStrategy === 'optional') {
+        await this.handleCookiePreferences(page);
+      }
       return;
     }
     const textClicked = await this.clickButtonByText(page, config.cookieStrategy);
     if (textClicked) {
       console.log(`Clicked ${config.cookieStrategy} via text`);
       await new Promise(resolve => setTimeout(resolve, 1000));
+      if (config.cookieStrategy === 'optional') {
+        await this.handleCookiePreferences(page);
+      }
     } else {
       console.log(`No ${config.cookieStrategy} button found`);
     }
+  }
+
+  private async handleCookiePreferences(page: Page): Promise<void> {
+    console.log('Handling cookie preferences dialog...');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    const toggleSelectors = [
+      'input[type="checkbox"][id*="analytics" i]:not([disabled])',
+      'input[type="checkbox"][id*="marketing" i]:not([disabled])',
+      'input[type="checkbox"][id*="advertising" i]:not([disabled])',
+      'input[type="checkbox"][id*="tracking" i]:not([disabled])',
+      'input[type="checkbox"][id*="performance" i]:not([disabled])',
+      'input[type="checkbox"][id*="social" i]:not([disabled])',
+      'input[type="checkbox"][class*="analytics" i]:not([disabled])',
+      'input[type="checkbox"][class*="marketing" i]:not([disabled])',
+      'input[type="checkbox"][class*="advertising" i]:not([disabled])',
+      'button[role="switch"][aria-checked="true"][aria-label*="analytics" i]',
+      'button[role="switch"][aria-checked="true"][aria-label*="marketing" i]',
+      'button[role="switch"][aria-checked="true"][aria-label*="advertising" i]',
+      '[class*="toggle"][class*="analytics"]',
+      '[class*="toggle"][class*="marketing"]',
+    ];
+
+    let toggledCount = 0;
+    for (const selector of toggleSelectors) {
+      try {
+        const elements = await page.$$(selector);
+        for (const element of elements) {
+          const isChecked = await element.evaluate((el: Element) => {
+            if (el instanceof HTMLInputElement) {
+              return el.checked;
+            }
+            if (el.getAttribute('role') === 'switch') {
+              return el.getAttribute('aria-checked') === 'true';
+            }
+            return false;
+          });
+          
+          if (isChecked) {
+            await this.safeClick(element);
+            toggledCount++;
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        }
+      } catch (error) {
+        // Continue to next selector if this one fails
+      }
+    }
+    
+    console.log(`Disabled ${toggledCount} optional cookie categories`);
+    
+    // Look for and click the "Save" or "Confirm" button
+    const saveSelectors = [
+      'button[id*="save" i]',
+      'button[class*="save" i]',
+      'button[id*="confirm" i]',
+      'button[class*="confirm" i]',
+      'button[id*="submit" i]',
+      'button[class*="submit" i]',
+      'button[id*="speichern" i]',
+      'button[class*="speichern" i]',
+      'button[aria-label*="save" i]',
+      'button[aria-label*="confirm" i]',
+      '[data-testid*="save"]',
+      '[data-testid*="confirm"]',
+    ];
+    
+    for (const selector of saveSelectors) {
+      try {
+        const button = await page.$(selector);
+        if (button) {
+          const isVisible = await button.evaluate((el: Element) => {
+            if (!(el instanceof HTMLElement)) return false;
+            const style = window.getComputedStyle(el);
+            return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+          });
+          
+          if (isVisible) {
+            await this.safeClick(button);
+            console.log('Clicked save/confirm button in preferences dialog');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return;
+          }
+        }
+      } catch (error) {
+        // Continue to next selector
+      }
+    }
+    
+    console.log('No save/confirm button found in preferences dialog');
   }
   private async waitForCookieBanner(page: Page, timeout: number): Promise<boolean> {
     try {
@@ -298,6 +395,7 @@ export class CrawlerConfigService {
       reject: ['reject all', 'alle ablehnen', 'decline'],
       optional: ['settings', 'preferences', 'einstellungen'],
     };
+    
     return page.evaluate((labels) => {
       const buttons = Array.from(document.querySelectorAll('button, [role="button"], a'));
       for (const label of labels) {
@@ -317,15 +415,37 @@ export class CrawlerConfigService {
     const browserType = dbConfig.browser as BrowserType;
     const baseBrowserConfig = this.BROWSER_CONFIGS[browserType];
     if (!baseBrowserConfig) throw new Error(`Unknown browser ${browserType}`);
+    
+    const jsEnabled = dbConfig.js;
+    const browserConfig = this._applyJsSettings(baseBrowserConfig, browserType, jsEnabled);
 
     return {
       browser: browserType,
-      browserConfig: baseBrowserConfig,
+      browserConfig,
       timeouts: this.TIMEOUTS,
       cookieBannerSelectors: this.COOKIE_BANNER_SELECTORS,
       cookieStrategy: this._mapDbCookieStrategy(dbConfig.cookies),
-      jsEnabled: true,
+      jsEnabled,
     };
+  }
+
+  private _applyJsSettings(
+    config: BrowserConfig,
+    browser: BrowserType,
+    jsEnabled: boolean
+  ): BrowserConfig {
+    if (browser === 'firefox' && !jsEnabled) {
+      // For Firefox, disable JavaScript through preferences
+      return {
+        ...config,
+        args: [
+          ...config.args,
+          '-pref',
+          'javascript.enabled=false',
+        ],
+      };
+    }
+    return config;
   }
 
   private _mapDbCookieStrategy(dbCookies: 'yes' | 'no' | 'opt'): CookieStrategy {

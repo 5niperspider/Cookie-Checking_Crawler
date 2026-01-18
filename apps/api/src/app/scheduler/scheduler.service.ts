@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { CrawlerService } from '../crawler.service';
 
-const configLength = 3;
+const configLength = 18;
 
 @Injectable()
 export class SchedulerService {
