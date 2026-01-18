@@ -29,7 +29,7 @@ export interface CrawlSession {
   url: string;
   browser: string;
   jsEnabled: boolean;
-  cookieBannerHandled: boolean;
+  cookieBannerHandled: string;
   adBlockerEnabled: boolean;
   createdAt: Date;
   cookies?: Cookie[];
