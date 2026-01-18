@@ -47,7 +47,6 @@ export class CrawlerConfigService {
           '--window-size=1920,1080',
         ],
         defaultViewport: { width: 1920, height: 1080 },
-        executablePath: this._getChromeExecutablePath(),
       },
 
       firefox: {
@@ -57,7 +56,7 @@ export class CrawlerConfigService {
           '--height=1080',
         ],
         defaultViewport: { width: 1920, height: 1080 },
-        // executablePath: this._getFirefoxExecutablePath(),
+      
       },
 
       brave: {
@@ -214,6 +213,95 @@ export class CrawlerConfigService {
     } else {
       console.log(`No ${config.cookieStrategy} button found`);
     }
+  }
+
+  private async handleCookiePreferences(page: Page): Promise<void> {
+    console.log('Handling cookie preferences dialog...');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    const toggleSelectors = [
+      'input[type="checkbox"][id*="analytics" i]:not([disabled])',
+      'input[type="checkbox"][id*="marketing" i]:not([disabled])',
+      'input[type="checkbox"][id*="advertising" i]:not([disabled])',
+      'input[type="checkbox"][id*="tracking" i]:not([disabled])',
+      'input[type="checkbox"][id*="performance" i]:not([disabled])',
+      'input[type="checkbox"][id*="social" i]:not([disabled])',
+      'input[type="checkbox"][class*="analytics" i]:not([disabled])',
+      'input[type="checkbox"][class*="marketing" i]:not([disabled])',
+      'input[type="checkbox"][class*="advertising" i]:not([disabled])',
+      'button[role="switch"][aria-checked="true"][aria-label*="analytics" i]',
+      'button[role="switch"][aria-checked="true"][aria-label*="marketing" i]',
+      'button[role="switch"][aria-checked="true"][aria-label*="advertising" i]',
+      '[class*="toggle"][class*="analytics"]',
+      '[class*="toggle"][class*="marketing"]',
+    ];
+
+    let toggledCount = 0;
+    for (const selector of toggleSelectors) {
+      try {
+        const elements = await page.$$(selector);
+        for (const element of elements) {
+          const isChecked = await element.evaluate((el: Element) => {
+            if (el instanceof HTMLInputElement) {
+              return el.checked;
+            }
+            if (el.getAttribute('role') === 'switch') {
+              return el.getAttribute('aria-checked') === 'true';
+            }
+            return false;
+          });
+          
+          if (isChecked) {
+            await this.safeClick(element);
+            toggledCount++;
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        }
+      } catch {
+        // Continue to next selector if this one fails
+      }
+    }
+    
+    console.log(`Disabled ${toggledCount} optional cookie categories`);
+    
+    // Look for and click the "Save" or "Confirm" button
+    const saveSelectors = [
+      'button[id*="save" i]',
+      'button[class*="save" i]',
+      'button[id*="confirm" i]',
+      'button[class*="confirm" i]',
+      'button[id*="submit" i]',
+      'button[class*="submit" i]',
+      'button[id*="speichern" i]',
+      'button[class*="speichern" i]',
+      'button[aria-label*="save" i]',
+      'button[aria-label*="confirm" i]',
+      '[data-testid*="save"]',
+      '[data-testid*="confirm"]',
+    ];
+    
+    for (const selector of saveSelectors) {
+      try {
+        const button = await page.$(selector);
+        if (button) {
+          const isVisible = await button.evaluate((el: Element) => {
+            if (!(el instanceof HTMLElement)) return false;
+            const style = window.getComputedStyle(el);
+            return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+          });
+          
+          if (isVisible) {
+            await this.safeClick(button);
+            console.log('Clicked save/confirm button in preferences dialog');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return;
+          }
+        }
+      } catch {
+        // Continue to next selector
+      }
+    }
+    
+    console.log('No save/confirm button found in preferences dialog');
   }
   private async waitForCookieBanner(page: Page, timeout: number): Promise<boolean> {
     try {
@@ -438,7 +526,7 @@ export class CrawlerConfigService {
 
     return {
       browser: browserType,
-      browserConfig: baseBrowserConfig,
+      browserConfig,
       timeouts: this.TIMEOUTS,
       cookieBannerSelectors: this.COOKIE_BANNER_SELECTORS,
       cookieStrategy: this._mapDbCookieStrategy(dbConfig.cookies),
@@ -480,25 +568,5 @@ export class CrawlerConfigService {
       return '/usr/bin/brave-browser';
     }
     return '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
-  }
-
-  private _getChromeExecutablePath(): string {
-    if (process.platform === 'win32') {
-      return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-    }
-    if (process.platform === 'linux') {
-      return '/usr/bin/google-chrome';
-    }
-    return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-  }
-
-  private _getFirefoxExecutablePath(): string {
-    if (process.platform === 'win32') {
-      return 'C:\\Program Files\\Mozilla Firefox\\firefox.exe';
-    }
-    if (process.platform === 'linux') {
-      return '/usr/bin/firefox';
-    }
-    return '/Applications/Firefox.app/Contents/MacOS/firefox';
   }
 }
