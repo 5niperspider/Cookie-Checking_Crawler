@@ -1,10 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CookieService, CrawlSession } from '../../services/cookie.service';
-import { AnalyticsService } from '../../services/analytics.service';
-import { CookieOverviewChartComponent } from '../cookie-overview-chart.component';
-import { CookiesByDomainChartComponent } from '../cookies-by-domain-chart.component';
+import { CookieService, CrawlSession } from '../services/cookie.service';
+import { AnalyticsService } from '../services/analytics.service';
+import { CookieOverviewChartComponent } from './cookie-overview-chart.component';
+import { CookiesByDomainChartComponent } from './cookies-by-domain-chart.component';
 import { SessionSummaryChartComponent } from './session-summary-chart.component';
 import { CookieTableComponent } from './cookie-table.component';
 
