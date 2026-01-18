@@ -26,12 +26,12 @@ import { Cookie } from '../services/cookie.service';
         <tbody>
           <tr *ngFor="let cookie of cookies">
             <td><small>{{ cookie.id }}</small></td>
-            <td>{{ cookie.name }}</td>
+            <td class="value-cell">{{ cookie.name }}</td>
             <td class="value-cell" [title]="cookie.value">{{ cookie.value }}</td>
             <td>{{ cookie.domain }}</td>
             <td>{{ cookie.path }}</td>
             <td>{{ cookie.expires || 'Session' }}</td>
-            <td>{{ cookie.createdAt | date:'short' }}</td>
+            <td>{{ cookie.created_at | date:'short' }}</td>
             <td>{{ cookie.isThirdParty ? 'Yes' : 'No' }}</td>
             <td>{{ cookie.isTracking ? 'Yes' : 'No' }}</td>
           </tr>

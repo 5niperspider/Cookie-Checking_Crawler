@@ -12,7 +12,7 @@ export interface Cookie {
   isThirdParty: boolean;
   isTracking: boolean;
   sessionId: string;
-  createdAt: Date;
+  created_at: Date;
 }
 
 export interface CookieStats {
