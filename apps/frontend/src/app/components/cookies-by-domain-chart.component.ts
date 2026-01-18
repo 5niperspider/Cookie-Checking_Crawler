@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewChildren, ElementRef, AfterViewInit, OnChanges, QueryList } from '@angular/core';
+import { Component, Input, OnInit, ViewChildren, ElementRef, AfterViewInit, OnChanges, QueryList, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
     Chart as ChartJS,
@@ -8,11 +8,11 @@ import {
     Title,
     Tooltip,
     Legend,
-    ChartData,
-    ChartOptions,
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { CookieStats } from '../services/cookie.service';
+import { AnalyticsService, AnalyticsResult } from '../services/analytics.service';
+import { CrawlSession } from '../services/cookie.service';
 
 ChartJS.register(
     CategoryScale,
@@ -24,85 +24,34 @@ ChartJS.register(
     ChartDataLabels
 );
 
-// Define interfaces for the dummy data structure
-import { DUMMY_DATA, DummyGroup } from '../data/dummy-data';
-
 @Component({
     selector: 'app-cookies-by-domain-chart',
     standalone: true,
     imports: [CommonModule],
     template: `
-        <div class="controls">
-            <span>Layout: </span>
-            <button (click)="layout = 'row'" [class.active]="layout === 'row'">Side-by-Side</button>
-            <button (click)="layout = 'column'" [class.active]="layout === 'column'">Stacked</button>
-        </div>
-        <div class="charts-container" [ngClass]="layout">
-            <div class="chart-wrapper" *ngFor="let group of dummyData; let i = index">
-                <h3>Category: {{ group.category }}</h3>
-                <div class="scroll-container">
-                    <div class="chart-inner" [style.min-width.px]="getMinWidth(group)">
-                        <canvas #canvas></canvas>
-                    </div>
+        <div class="charts-container">
+            <div class="chart-wrapper" *ngFor="let configValue of configValues; let i = index">
+                <h3>Cookies: {{ configValue === 'yes' ? 'Accepted' : configValue === 'no' ? 'Rejected' : 'Optional' }}</h3>
+                <div class="chart-inner">
+                    <canvas #canvas></canvas>
                 </div>
             </div>
         </div>
     `,
     styles: [
         `
-            .controls {
-                margin-bottom: 15px;
-                display: flex;
-                gap: 10px;
-                align-items: center;
-            }
-            .controls button {
-                padding: 6px 12px;
-                border: 1px solid #ccc;
-                background: #f8f8f8;
-                border-radius: 4px;
-                cursor: pointer;
-            }
-            .controls button.active {
-                background: #36a2eb;
-                color: white;
-                border-color: #36a2eb;
-            }
-
             .charts-container {
-                display: flex;
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
                 gap: 20px;
-                padding-bottom: 20px;
-            }
-
-            /* Row Layout (Default) */
-            .charts-container.row {
-                flex-direction: row;
-                overflow-x: auto;
-            }
-            .charts-container.row .chart-wrapper {
-                flex: 1;
-                min-width: 300px;
-            }
-
-            /* Column Layout (Stacked) */
-            .charts-container.column {
-                flex-direction: column;
-            }
-            .charts-container.column .chart-wrapper {
-                width: 100%;
+                padding: 20px 0;
             }
 
             .chart-wrapper {
                 border: 1px solid #ddd;
-                padding: 10px;
+                padding: 15px;
                 border-radius: 8px;
                 background: white;
-            }
-            .scroll-container {
-                width: 100%;
-                overflow-x: auto;
-                border: 1px solid #eee;
             }
             .chart-inner {
                 position: relative;
@@ -110,8 +59,9 @@ import { DUMMY_DATA, DummyGroup } from '../data/dummy-data';
             }
             h3 {
                 text-align: center;
-                margin-bottom: 10px;
+                margin: 0 0 15px 0;
                 font-weight: bold;
+                font-size: 16px;
             }
         `,
     ],
@@ -119,13 +69,16 @@ import { DUMMY_DATA, DummyGroup } from '../data/dummy-data';
 export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnChanges {
     @ViewChildren('canvas') canvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
     @Input() stats?: CookieStats;
+    @Input() sessions: CrawlSession[] = [];
 
-    public dummyData = DUMMY_DATA;
-    public layout: 'row' | 'column' = 'row';
+    public configValues: Array<'yes' | 'no' | 'opt'> = ['yes', 'no', 'opt'];
     private chartInstances: ChartJS[] = [];
+    private analyticsData: AnalyticsResult = {};
+
+    private analyticsService = inject(AnalyticsService);
 
     ngOnInit() {
-        // nothing needed here
+        this.loadAnalyticsData();
     }
 
     ngAfterViewInit(): void {
@@ -136,65 +89,187 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
         this.renderCharts();
     }
 
-    getMinWidth(group: DummyGroup): number {
-        const sessionCount = Object.keys(group.sessions).length;
-        // Make sure there is enough space. 30px per session minimum.
-        return Math.max(800, sessionCount * 40);
+    private loadAnalyticsData() {
+        this.analyticsService.getAnalytics().subscribe({
+            next: (data: AnalyticsResult) => {
+                this.analyticsData = data;
+                this.renderCharts();
+            },
+            error: (err: unknown) => {
+                console.error('Error loading analytics data:', err);
+            }
+        });
     }
 
     private renderCharts() {
-        if (!this.canvasRefs) return;
+        if (!this.canvasRefs || this.sessions.length === 0) return;
 
         this.chartInstances.forEach(c => c.destroy());
         this.chartInstances = [];
 
-        this.canvasRefs.forEach((canvasRef, index) => {
-            const group = this.dummyData[index];
-            if (!group) return;
+        this.canvasRefs.forEach((canvasRef, configIndex) => {
+            const targetConfigValue = this.configValues[configIndex];
+
+            // Filtere Sessions nach cookieBannerHandled Wert
+            const filteredSessions = this.sessions.filter(
+                s => s.cookieBannerHandled === targetConfigValue
+            );
+
+            console.log(`Chart ${configIndex} (${targetConfigValue}):`, filteredSessions.length, 'sessions filtered from', this.sessions.length);
+
+            if (!filteredSessions || filteredSessions.length === 0) {
+                // Leeres Chart für diese Config
+                const ctx = canvasRef.nativeElement.getContext('2d');
+                if (ctx) {
+                    this.chartInstances.push(
+                        new ChartJS(ctx, {
+                            type: 'bar',
+                            data: { labels: [], datasets: [] },
+                            options: { responsive: true, maintainAspectRatio: false }
+                        })
+                    );
+                }
+                return;
+            }
+
+            // Gruppiere Sessions nach URL
+            const urlToSessionsMap = new Map<string, CrawlSession[]>();
+
+            filteredSessions.forEach(session => {
+                if (session.url) {
+                    if (!urlToSessionsMap.has(session.url)) {
+                        urlToSessionsMap.set(session.url, []);
+                    }
+                    const sessions = urlToSessionsMap.get(session.url);
+                    if (sessions) {
+                        sessions.push(session);
+                    }
+                }
+            });
+
+            // Sortiere URLs
+            const sortedUrls = Array.from(urlToSessionsMap.keys()).sort();
+
+            // Sammle Domains und berechne DURCHSCHNITT pro Domain pro URL
+            const domainCookieAverages = new Map<string, Map<string, number>>();
+
+            sortedUrls.forEach(url => {
+                const sessionsForUrl = urlToSessionsMap.get(url) || [];
+                const domainTotalMap = new Map<string, number>();
+                const domainCountMap = new Map<string, number>();
+
+                // Summe und Anzahl pro Domain für diese URL sammeln
+                sessionsForUrl.forEach(session => {
+                    const classified = this.analyticsData[session.id as unknown as number];
+                    if (classified) {
+                        const allCookies = [
+                            ...classified.firstparty.tracking,
+                            ...classified.firstparty.nontracking,
+                            ...classified.thirdparty
+                        ];
+
+                        allCookies.forEach(cookie => {
+                            const currentTotal = domainTotalMap.get(cookie.domain) || 0;
+                            const currentCount = domainCountMap.get(cookie.domain) || 0;
+                            domainTotalMap.set(cookie.domain, currentTotal + 1);
+                            domainCountMap.set(cookie.domain, currentCount + 1);
+                        });
+                    }
+                });
+
+                // Berechne Durchschnitt pro Domain für diese URL
+                const domainAvgMap = new Map<string, number>();
+                domainTotalMap.forEach((total, domain) => {
+                    const avg = total / sessionsForUrl.length;
+                    domainAvgMap.set(domain, avg);
+                });
+
+                domainCookieAverages.set(url, domainAvgMap);
+            });
+
+            // Sammle alle Domains
+            const allDomains = new Set<string>();
+            domainCookieAverages.forEach(domainMap => {
+                domainMap.forEach((_, domain) => allDomains.add(domain));
+            });
+
+            const domains = Array.from(allDomains).slice(0, 10).sort(); // Top 10 Domains
+
+            // Erstelle Datasets pro Domain mit Durchschnittswerten
+            const colors = ['#FF6384', '#36A2EB', '#FFCD56', '#4BC0C0', '#9966FF', '#FF9999', '#FFCC99', '#99CCFF', '#CCCCCC', '#FF99CC'];
+            const datasets = domains.map((domain, domainIndex) => {
+                const dataPoints = sortedUrls.map(url => {
+                    const domainMap = domainCookieAverages.get(url);
+                    return domainMap?.get(domain) || 0;
+                });
+
+                return {
+                    label: domain,
+                    data: dataPoints,
+                    backgroundColor: colors[domainIndex % colors.length],
+                };
+            });
 
             const ctx = canvasRef.nativeElement.getContext('2d');
             if (!ctx) return;
 
-            const urls = Object.keys(group.sessions);
-            const browsers = ['Chrome', 'Firefox', 'Edge'];
-
-            const browserColors: { [key: string]: string } = {
-                'Chrome': '#FF6384',
-                'Firefox': '#36A2EB',
-                'Edge': '#FFCD56'
-            };
-
-            const datasets = browsers.map(browser => {
-                const dataPoints = urls.map(url => {
-                    const sessionData = group.sessions[url];
-                    const browserData = sessionData[browser];
-                    return (browserData.firstparty.nontrakking.length || 0) +
-                        (browserData.firstparty.trakking.length || 0) +
-                        (browserData.thirdparty.length || 0);
-                });
-
-                return {
-                    label: browser,
-                    data: dataPoints,
-                    backgroundColor: browserColors[browser],
-                    stack: 'stack1',
-                };
+            // Erstelle URL-Labels und speichere Metadaten für Tooltips
+            const urlMetadata = new Map<string, { avgCookies: number; sessionCount: number }>();
+            
+            const urlLabels = sortedUrls.map((url, i) => {
+                try {
+                    const urlObj = new URL(url);
+                    const hostname = urlObj.hostname.replace('www.', '');
+                    const sessionsForUrl = urlToSessionsMap.get(url) || [];
+                    let totalCookies = 0;
+                    
+                    sessionsForUrl.forEach(session => {
+                        const classified = this.analyticsData[session.id as unknown as number];
+                        if (classified) {
+                            const allCookies = [
+                                ...classified.firstparty.tracking,
+                                ...classified.firstparty.nontracking,
+                                ...classified.thirdparty
+                            ];
+                            totalCookies += allCookies.length;
+                        }
+                    });
+                    
+                    const avgCookies = sessionsForUrl.length > 0 ? totalCookies / sessionsForUrl.length : 0;
+                    urlMetadata.set(url, { avgCookies, sessionCount: sessionsForUrl.length });
+                    return hostname;
+                } catch {
+                    const sessionsForUrl = urlToSessionsMap.get(url) || [];
+                    let totalCookies = 0;
+                    
+                    sessionsForUrl.forEach(session => {
+                        const classified = this.analyticsData[session.id as unknown as number];
+                        if (classified) {
+                            const allCookies = [
+                                ...classified.firstparty.tracking,
+                                ...classified.firstparty.nontracking,
+                                ...classified.thirdparty
+                            ];
+                            totalCookies += allCookies.length;
+                        }
+                    });
+                    
+                    const avgCookies = sessionsForUrl.length > 0 ? totalCookies / sessionsForUrl.length : 0;
+                    urlMetadata.set(url, { avgCookies, sessionCount: sessionsForUrl.length });
+                    return `U${i + 1}`;
+                }
             });
 
             const chart = new ChartJS(ctx, {
                 type: 'bar',
                 data: {
-                    labels: urls,
+                    labels: urlLabels,
                     datasets: datasets,
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'nearest',
-                        intersect: true,
-                        axis: 'x'
-                    },
+                    indexAxis: 'x',
                     layout: {
                         padding: {
                             top: 25
@@ -204,45 +279,59 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                         legend: {
                             display: false
                         },
-                        title: {
-                            display: false,
-                        },
                         tooltip: {
-                            mode: 'nearest',
-                            intersect: true,
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 12,
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                size: 11
+                            },
+                            callbacks: {
+                                title: (context) => {
+                                    if (context.length === 0) return '';
+                                    const urlIndex = context[0].dataIndex;
+                                    const url = sortedUrls[urlIndex];
+                                    const metadata = urlMetadata.get(url);
+                                    const label = context[0]?.label || '';
+                                    const sessionCount = metadata?.sessionCount || 0;
+                                    const avgCookies = metadata?.avgCookies?.toFixed(1) || '0';
+                                    return `📍 ${label}\n${sessionCount} ${sessionCount === 1 ? 'Session' : 'Sessions'} | Ø ${avgCookies} cookies`;
+                                },
+                                label: () => '',
+                                footer: (context) => {
+                                    if (context.length > 0) {
+                                        const total = context.reduce((sum, ctx) => sum + (ctx.parsed.y || 0), 0);
+                                        return `Total: ${total} cookies`;
+                                    }
+                                    return '';
+                                }
+                            }
                         },
-                        // @ts-ignore
                         datalabels: {
-                            color: '#000',
-                            anchor: 'end',
-                            align: 'start',
-                            rotation: -90,
-                            offset: 4,
-                            display: (context: any) => {
-                                return context.datasetIndex === datasets.length - 1;
-                            },
-                            formatter: (value: any, context: any) => {
-                                const label = context.chart.data.labels[context.dataIndex];
-                                return label;
-                            },
-                            font: {
-                                weight: 'bold',
-                                size: 10
-                            },
-                            clamp: true,
-                            clip: true
-                        }
+                            display: false
+                        } as Record<string, unknown>
                     },
                     scales: {
                         x: {
                             stacked: true,
                             title: {
                                 display: true,
-                                text: 'Session URL'
+                                text: 'Websites (Sessions)',
+                                font: {
+                                    weight: 'bold'
+                                }
                             },
                             ticks: {
-                                maxRotation: 90,
-                                minRotation: 90
+                                maxRotation: 45,
+                                minRotation: 0,
+                                font: {
+                                    size: 10
+                                }
                             }
                         },
                         y: {
@@ -250,7 +339,13 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Total Cookies'
+                                text: 'Cookie Count',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                stepSize: 1
                             }
                         },
                     },
