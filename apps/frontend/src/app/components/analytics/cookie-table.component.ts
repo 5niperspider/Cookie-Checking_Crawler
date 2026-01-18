@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Cookie } from '../services/cookie.service';
+import { Cookie } from '../../services/cookie.service';
 
 @Component({
     selector: 'app-cookie-table',

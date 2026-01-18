@@ -10,8 +10,8 @@ import {
     Legend
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-import { AnalyticsService, AnalyticsResult } from '../services/analytics.service';
-import { CrawlSession } from '../services/cookie.service';
+import { AnalyticsService, AnalyticsResult } from '../../services/analytics.service';
+import { CrawlSession } from '../../services/cookie.service';
 
 ChartJS.register(
     CategoryScale,

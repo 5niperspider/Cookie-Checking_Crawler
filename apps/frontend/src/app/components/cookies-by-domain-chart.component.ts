@@ -38,32 +38,30 @@ ChartJS.register(
             </div>
         </div>
     `,
-    styles: [
-        `
-            .charts-container {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 20px;
-                padding: 20px 0;
-            }
-            .chart-wrapper {
-                border: 1px solid #ddd;
-                padding: 15px;
-                border-radius: 8px;
-                background: white;
-            }
-            .chart-inner {
-                position: relative;
-                height: 400px;
-            }
-            h3 {
-                text-align: center;
-                margin: 0 0 15px 0;
-                font-weight: bold;
-                font-size: 16px;
-            }
-        `,
-    ],
+    styles: [`
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .chart-wrapper {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+        }
+        .chart-inner {
+            position: relative;
+            height: 400px;
+        }
+        h3 {
+            text-align: center;
+            margin: 0 0 15px 0;
+            font-weight: bold;
+            font-size: 16px;
+        }
+    `]
 })
 export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnChanges {
     @ViewChildren('canvas') canvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
@@ -106,126 +104,57 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
         this.chartInstances.forEach(c => c.destroy());
         this.chartInstances = [];
 
+        const browsers = ['chrome', 'firefox', 'brave'] as const;
+        const browserLabels = ['Chrome', 'Firefox', 'Brave'];
+        const browserColors = ['#4285F4', '#FF7139', '#FB542B'];
+
         this.canvasRefs.forEach((canvasRef, configIndex) => {
             const targetConfigValue = this.configValues[configIndex];
 
-            // Filtere Sessions nach cookieBannerHandled Wert
+            // Filtere Sessions NACH cookieBannerHandled
             const filteredSessions = this.sessions.filter(
                 s => s.cookieBannerHandled === targetConfigValue
             );
 
-            if (!filteredSessions || filteredSessions.length === 0) {
+            if (filteredSessions.length === 0) {
                 const ctx = canvasRef.nativeElement.getContext('2d');
                 if (ctx) {
-                    this.chartInstances.push(
-                        new ChartJS(ctx, {
-                            type: 'bar',
-                            data: { labels: [], datasets: [] },
-                            options: { responsive: true, maintainAspectRatio: false }
-                        })
-                    );
+                    this.chartInstances.push(new ChartJS(ctx, {
+                        type: 'bar',
+                        data: { labels: [], datasets: [] },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    }));
                 }
                 return;
             }
 
-            // Gruppiere Sessions nach URL
-            const urlToSessionsMap = new Map<string, CrawlSession[]>();
+            // Pro Browser: Total Cookies + Session-Anzahl
+            const totalCookiesPerBrowser = [0, 0, 0];
+            const browserSessionCounts = [0, 0, 0];
+
             filteredSessions.forEach(session => {
-                if (session.url) {
-                    if (!urlToSessionsMap.has(session.url)) {
-                        urlToSessionsMap.set(session.url, []);
-                    }
-                    urlToSessionsMap.get(session.url)!.push(session);
+                const idx = browsers.indexOf(session.browser as typeof browsers[number]);
+                if (idx === -1) return;
+
+                // ← TYPE-FIX: (as any) für String(session.id)
+                const sessionKey = String(session.id);
+                const classified = (this.analyticsData as any)[sessionKey];
+                
+                if (classified) {
+                    const allCookies = [
+                        ...(classified.firstparty?.nontracking || []),
+                        ...(classified.firstparty?.tracking || []),
+                        ...(classified.thirdparty || [])
+                    ];
+                    totalCookiesPerBrowser[idx] += allCookies.length;
                 }
+                browserSessionCounts[idx]++;
             });
 
-            const sortedUrls = Array.from(urlToSessionsMap.keys()).sort().slice(0, 10);
-
-            // Browser Config
-            const browsers = ['chrome', 'firefox', 'brave'] as const;
-            const browserLabels: Record<typeof browsers[number], string> = {
-                'chrome': 'Chrome',
-                'firefox': 'Firefox',
-                'brave': 'Brave'
-            };
-            const browserColors: Record<string, string> = {
-                'Chrome': '#4285F4',
-                'Firefox': '#FF7139',
-                'Brave': '#FB542B'
-            };
-
-            // Precompute pro URL: total avg + browser-spezifische Ø cookies
-            const urlMetadata = new Map<string, { 
-                totalAvgCookies: number; 
-                sessionCount: number;
-                browserSessions: Record<string, number>;
-                browserAvgs: Record<string, number>; // Ø cookies PRO BROWSER
-            }>();
-            
-            const urlLabels: string[] = [];
-            sortedUrls.forEach((url, index) => {
-                const sessionsForUrl = urlToSessionsMap.get(url) || [];
-                const browserSessions: Record<string, number> = { chrome: 0, firefox: 0, brave: 0 };
-                const browserTotals: Record<string, number> = { chrome: 0, firefox: 0, brave: 0 };
-                
-                sessionsForUrl.forEach(session => {
-                    const browserKey = session.browser || '';
-                    browserSessions[browserKey] = (browserSessions[browserKey] || 0) + 1;
-                    
-                    const classified = this.analyticsData[session.id as unknown as number];
-                    if (classified) {
-                        const allCookies = [
-                            ...classified.firstparty.tracking,
-                            ...classified.firstparty.nontracking,
-                            ...classified.thirdparty
-                        ];
-                        browserTotals[browserKey] += allCookies.length;
-                    }
-                });
-                
-                const totalAvgCookies = sessionsForUrl.length > 0 ? 
-                    Object.values(browserTotals).reduce((a, b) => a + b, 0) / sessionsForUrl.length : 0;
-                
-                const browserAvgs: Record<string, number> = {};
-                browsers.forEach(b => {
-                    browserAvgs[b] = browserSessions[b] > 0 ? browserTotals[b] / browserSessions[b] : 0;
-                });
-                
-                urlMetadata.set(url, { 
-                    totalAvgCookies, 
-                    sessionCount: sessionsForUrl.length, 
-                    browserSessions, 
-                    browserAvgs 
-                });
-                
-                // Label
-                try {
-                    const urlObj = new URL(url);
-                    urlLabels.push(urlObj.hostname.replace('www.', ''));
-                } catch {
-                    urlLabels.push(`U${index + 1}`);
-                }
-            });
-
-            // Datasets: Farbanteil = (browser_Ø / SUMME_ALLER_browser_Øs) * totalAvg
-            const datasets = browsers.map(browserKey => {
-                const label = browserLabels[browserKey];
-                const color = browserColors[label];
-
-                const dataPoints: number[] = sortedUrls.map(url => {
-                    const metadata = urlMetadata.get(url)!;
-                    const sumAllBrowserAvgs = browsers.reduce((sum, b) => sum + metadata.browserAvgs[b], 0);
-                    if (sumAllBrowserAvgs === 0) return 0;
-                    return (metadata.browserAvgs[browserKey] / sumAllBrowserAvgs) * metadata.totalAvgCookies;
-                });
-
-                return {
-                    label,
-                    data: dataPoints,
-                    backgroundColor: color,
-                    stack: 'BrowserStack'
-                };
-            });
+            // Ø Cookies pro Session und Browser
+            const browserAverages = totalCookiesPerBrowser.map((total, idx) =>
+                browserSessionCounts[idx] > 0 ? total / browserSessionCounts[idx] : 0
+            );
 
             const ctx = canvasRef.nativeElement.getContext('2d');
             if (!ctx) return;
@@ -233,94 +162,64 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
             const chart = new ChartJS(ctx, {
                 type: 'bar',
                 data: {
-                    labels: urlLabels,
-                    datasets,
+                    labels: browserLabels,
+                    datasets: [{
+                        label: 'Ø Cookies pro Session',
+                        data: browserAverages,
+                        backgroundColor: browserColors,
+                        borderColor: browserColors.map(c => c + 'CC'),
+                        borderWidth: 1
+                    }],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    indexAxis: 'x',
-                    layout: {
-                        padding: {
-                            top: 25
-                        }
-                    },
                     plugins: {
                         legend: {
-                            display: true,
-                            position: 'top'
+                            display: false
                         },
                         tooltip: {
-                            mode: 'index',
-                            intersect: false,
                             backgroundColor: 'rgba(0, 0, 0, 0.8)',
                             padding: 12,
-                            titleFont: {
-                                size: 12,
-                                weight: 'bold'
-                            },
-                            bodyFont: {
-                                size: 11
-                            },
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 12 },
                             callbacks: {
                                 title: (context) => {
-                                    if (context.length === 0) return '';
-                                    const urlIndex = context[0].dataIndex;
-                                    const url = sortedUrls[urlIndex];
-                                    const metadata = urlMetadata.get(url)!;
-                                    const siteLabel = urlLabels[urlIndex];
-                                    const browserBreakdown = Object.entries(metadata.browserSessions)
-                                        .filter(([, count]) => count > 0)
-                                        .map(([b, count]) => `${browserLabels[b as keyof typeof browserLabels] || b}: ${count}`)
-                                        .join('\n');
-                                    return `📍 ${siteLabel}\nTotal Ø: ${metadata.totalAvgCookies.toFixed(1)} cookies\n${browserBreakdown}`;
+                                    const i = context[0].dataIndex;
+                                    const sessions = browserSessionCounts[i];
+                                    const total = totalCookiesPerBrowser[i];
+                                    return `${browserLabels[i]}\n${sessions} Sessions | Total: ${total} cookies`;
                                 },
                                 label: (context) => {
-                                    const browserKey = ['chrome', 'firefox', 'brave'][context.datasetIndex];
-                                    const metadata = urlMetadata.get(sortedUrls[context.dataIndex])!;
-                                    const browserAvg = metadata.browserAvgs[browserKey];
-                                    const value = context.parsed.y;
-                                    const sessions = metadata.browserSessions[browserKey];
-                                    return `${context.dataset.label}: ${value?.toFixed(1)} (Ø ${browserAvg.toFixed(1)}, ${sessions} Sessions)`;
+                                    const avg = context.parsed.y;
+                                    return `Ø ${avg?.toFixed(1)} cookies/Session`;
                                 }
                             }
                         },
                         datalabels: {
-                            display: false
+                            display: true,
+                            color: 'black',
+                            font: { weight: 'bold', size: 12 },
+                            formatter: (value: number) => value.toFixed(1)
                         } as Record<string, unknown>
                     },
                     scales: {
-                        x: {
-                            stacked: true,
-                            title: {
-                                display: true,
-                                text: 'Websites',
-                                font: {
-                                    weight: 'bold'
-                                }
-                            },
-                            ticks: {
-                                maxRotation: 45,
-                                minRotation: 0,
-                                font: {
-                                    size: 10
-                                }
-                            }
-                        },
                         y: {
-                            stacked: true,
                             beginAtZero: true,
                             title: {
                                 display: true,
                                 text: 'Ø Cookies pro Session',
-                                font: {
-                                    weight: 'bold'
-                                }
+                                font: { weight: 'bold' }
                             },
-                            ticks: {
-                                stepSize: 1
-                            }
+                            ticks: { stepSize: 1 }
                         },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Browser',
+                                font: { weight: 'bold' }
+                            }
+                        }
                     },
                 },
             });
