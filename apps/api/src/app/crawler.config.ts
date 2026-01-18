@@ -47,7 +47,6 @@ export class CrawlerConfigService {
           '--window-size=1920,1080',
         ],
         defaultViewport: { width: 1920, height: 1080 },
-        executablePath: this._getChromeExecutablePath(),
       },
 
       firefox: {
@@ -57,7 +56,7 @@ export class CrawlerConfigService {
           '--height=1080',
         ],
         defaultViewport: { width: 1920, height: 1080 },
-        // executablePath: this._getFirefoxExecutablePath(),
+      
       },
 
       brave: {
@@ -215,23 +214,6 @@ export class CrawlerConfigService {
       console.log(`No ${config.cookieStrategy} button found`);
     }
   }
-  private async waitForCookieBanner(page: Page, timeout: number): Promise<boolean> {
-    try {
-      await page.waitForFunction(
-        () => {
-          if (
-            window['OneTrust'] ||
-            window['UC_UI'] ||
-            window['Cookiebot'] ||
-            window['__tcfapi'] ||
-            window['Didomi']
-          ) {
-            return true;
-          }
-          const keywords = ['cookie', 'consent', 'gdpr', 'datenschutz'];
-          const elements = Array.from(document.querySelectorAll(
-            'div, section, aside, [role="dialog"], [role="banner"]',
-          ));
 
   private async handleCookiePreferences(page: Page): Promise<void> {
     console.log('Handling cookie preferences dialog...');
@@ -274,7 +256,7 @@ export class CrawlerConfigService {
             await new Promise(resolve => setTimeout(resolve, 200));
           }
         }
-      } catch (error) {
+      } catch {
         // Continue to next selector if this one fails
       }
     }
@@ -314,7 +296,7 @@ export class CrawlerConfigService {
             return;
           }
         }
-      } catch (error) {
+      } catch {
         // Continue to next selector
       }
     }
@@ -438,7 +420,7 @@ export class CrawlerConfigService {
 
     return {
       browser: browserType,
-      browserConfig: baseBrowserConfig,
+      browserConfig,
       timeouts: this.TIMEOUTS,
       cookieBannerSelectors: this.COOKIE_BANNER_SELECTORS,
       cookieStrategy: this._mapDbCookieStrategy(dbConfig.cookies),
@@ -480,25 +462,5 @@ export class CrawlerConfigService {
       return '/usr/bin/brave-browser';
     }
     return '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
-  }
-
-  private _getChromeExecutablePath(): string {
-    if (process.platform === 'win32') {
-      return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-    }
-    if (process.platform === 'linux') {
-      return '/usr/bin/google-chrome';
-    }
-    return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-  }
-
-  private _getFirefoxExecutablePath(): string {
-    if (process.platform === 'win32') {
-      return 'C:\\Program Files\\Mozilla Firefox\\firefox.exe';
-    }
-    if (process.platform === 'linux') {
-      return '/usr/bin/firefox';
-    }
-    return '/Applications/Firefox.app/Contents/MacOS/firefox';
   }
 }
