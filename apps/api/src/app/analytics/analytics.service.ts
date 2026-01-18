@@ -125,9 +125,68 @@ export class AnalyticsService {
 
   private isFirstPartyCookie(cookieDomain: string, sessionUrl: string): boolean {
     try {
-      const url = new URL(sessionUrl);
+      // Stelle sicher, dass die URL ein Schema hat
+      let validUrl = sessionUrl;
+      if (!sessionUrl.startsWith('http://') && !sessionUrl.startsWith('https://')) {
+        validUrl = 'https://' + sessionUrl;
+      }
+
+      const url = new URL(validUrl);
       const mainDomain = url.hostname;
-      return cookieDomain.includes(mainDomain);
+
+      // Handle edge cases
+      if (!cookieDomain || !mainDomain) {
+        return false;
+      }
+
+      // Normalisiere die Cookie-Domain (entferne führenden Punkt und konvertiere zu lowercase)
+      const normalizedCookieDomain = cookieDomain
+        .toLowerCase()
+        .startsWith('.') 
+        ? cookieDomain.toLowerCase().slice(1) 
+        : cookieDomain.toLowerCase();
+
+      const normalizedMainDomain = mainDomain.toLowerCase();
+
+      // Prüfe verschiedene Fälle:
+
+      // 1. Exakte Übereinstimmung: www.google.com === www.google.com
+      if (normalizedMainDomain === normalizedCookieDomain) {
+        return true;
+      }
+
+      // 2. Subdomain-Match: www.google.com endet mit .google.com
+      // Dies deckt auch Fälle ab wie: mail.google.com, accounts.google.com, etc.
+      if (normalizedMainDomain.endsWith('.' + normalizedCookieDomain)) {
+        return true;
+      }
+
+      // 3. Parent Domain mit Punkt-Präfix: 
+      // sessionUrl: www.google.com, cookieDomain: .google.com
+      if (cookieDomain.startsWith('.') && normalizedMainDomain.endsWith(normalizedCookieDomain)) {
+        return true;
+      }
+
+      // 4. Localhost Varianten: localhost, 127.0.0.1, ::1 (IPv6)
+      if (normalizedMainDomain === normalizedCookieDomain) {
+        return true;
+      }
+
+      // 5. Port-Nummern ignorieren: www.google.com:8080 sollte gleich www.google.com sein
+      const mainDomainWithoutPort = normalizedMainDomain.split(':')[0];
+      if (mainDomainWithoutPort === normalizedCookieDomain) {
+        return true;
+      }
+      if (mainDomainWithoutPort.endsWith('.' + normalizedCookieDomain)) {
+        return true;
+      }
+
+      // 6. IP-Adressen: Exakte Übereinstimmung mit Port
+      if (mainDomain === cookieDomain || mainDomainWithoutPort === normalizedCookieDomain) {
+        return true;
+      }
+
+      return false;
     } catch {
       return false;
     }
