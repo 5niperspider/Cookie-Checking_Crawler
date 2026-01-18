@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { AnalyticsDashboardComponent } from './pages/analytics-dashboard.component';
+import { AnalyticsDashboardComponent } from './components/analytics-dashboard.component';
 
 export const appRoutes: Route[] = [
   {

@@ -22,7 +22,7 @@ export interface ClassifiedCookies {
 }
 
 export interface AnalyticsResult {
-  [sessionId: number]: ClassifiedCookies;
+  [sessionId: string]: ClassifiedCookies;
 }
 
 @Injectable({
