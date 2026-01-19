@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewChildren, ElementRef, AfterViewInit, OnChanges, QueryList } from '@angular/core';
+import { Component, Input, OnInit, ViewChildren, ElementRef, AfterViewInit, OnChanges, QueryList, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
     Chart as ChartJS,
@@ -8,11 +8,11 @@ import {
     Title,
     Tooltip,
     Legend,
-    ChartData,
-    ChartOptions,
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { CookieStats } from '../services/cookie.service';
+import { AnalyticsService, AnalyticsResult } from '../services/analytics.service';
+import { CrawlSession } from '../services/cookie.service';
 
 ChartJS.register(
     CategoryScale,
@@ -24,109 +24,58 @@ ChartJS.register(
     ChartDataLabels
 );
 
-// Define interfaces for the dummy data structure
-import { CrawlSession, AnalyticsResult } from '../services/cookie.service';
-
 @Component({
     selector: 'app-cookies-by-domain-chart',
     standalone: true,
     imports: [CommonModule],
     template: `
-        <div class="controls">
-            <span>Layout: </span>
-            <button (click)="layout = 'row'" [class.active]="layout === 'row'">Side-by-Side</button>
-            <button (click)="layout = 'column'" [class.active]="layout === 'column'">Stacked</button>
-        </div>
-        <div class="charts-container" [ngClass]="layout">
-            <div class="chart-wrapper" *ngFor="let group of groupedSessions; let i = index">
-                <h3>Category: {{ group.category }}</h3>
-                <div class="scroll-container">
-                    <div class="chart-inner" [style.min-width.px]="getMinWidth(group)">
-                        <canvas #canvas></canvas>
-                    </div>
+        <div class="charts-container">
+            <div class="chart-wrapper" *ngFor="let configValue of configValues; let i = index">
+                <h3>Cookies: {{ configValue === 'yes' ? 'Accepted' : configValue === 'no' ? 'Rejected' : 'Optional' }}</h3>
+                <div class="chart-inner">
+                    <canvas #canvas></canvas>
                 </div>
             </div>
         </div>
     `,
-    styles: [
-        `
-            .controls {
-                margin-bottom: 15px;
-                display: flex;
-                gap: 10px;
-                align-items: center;
-            }
-            .controls button {
-                padding: 6px 12px;
-                border: 1px solid #ccc;
-                background: #f8f8f8;
-                border-radius: 4px;
-                cursor: pointer;
-            }
-            .controls button.active {
-                background: #36a2eb;
-                color: white;
-                border-color: #36a2eb;
-            }
-
-            .charts-container {
-                display: flex;
-                gap: 20px;
-                padding-bottom: 20px;
-            }
-
-            /* Row Layout (Default) */
-            .charts-container.row {
-                flex-direction: row;
-                overflow-x: auto;
-            }
-            .charts-container.row .chart-wrapper {
-                flex: 1;
-                min-width: 300px;
-            }
-
-            /* Column Layout (Stacked) */
-            .charts-container.column {
-                flex-direction: column;
-            }
-            .charts-container.column .chart-wrapper {
-                width: 100%;
-            }
-
-            .chart-wrapper {
-                border: 1px solid #ddd;
-                padding: 10px;
-                border-radius: 8px;
-                background: white;
-            }
-            .scroll-container {
-                width: 100%;
-                overflow-x: auto;
-                border: 1px solid #eee;
-            }
-            .chart-inner {
-                position: relative;
-                height: 400px;
-            }
-            h3 {
-                text-align: center;
-                margin-bottom: 10px;
-                font-weight: bold;
-            }
-        `,
-    ],
+    styles: [`
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .chart-wrapper {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+        }
+        .chart-inner {
+            position: relative;
+            height: 400px;
+        }
+        h3 {
+            text-align: center;
+            margin: 0 0 15px 0;
+            font-weight: bold;
+            font-size: 16px;
+        }
+    `]
 })
 export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnChanges {
     @ViewChildren('canvas') canvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
+    @Input() stats?: CookieStats;
     @Input() sessions: CrawlSession[] = [];
-    @Input() analyticsData: AnalyticsResult = {};
 
-    public groupedSessions: { category: string, sessions: CrawlSession[] }[] = [];
-    public layout: 'row' | 'column' = 'row';
+    public configValues: Array<'yes' | 'no' | 'opt'> = ['yes', 'no', 'opt'];
     private chartInstances: ChartJS[] = [];
+    private analyticsData: AnalyticsResult = {};
+
+    private analyticsService = inject(AnalyticsService);
 
     ngOnInit() {
-        // nothing needed here
+        this.loadAnalyticsData();
     }
 
     ngAfterViewInit(): void {
@@ -135,158 +84,140 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
 
 
 
-    getMinWidth(group: { category: string, sessions: CrawlSession[] }): number {
-        const sessionCount = group.sessions.length;
-        // Make sure there is enough space. 30px per session minimum.
-        return Math.max(800, sessionCount * 40);
+    private loadAnalyticsData() {
+        this.analyticsService.getAnalytics().subscribe({
+            next: (data: AnalyticsResult) => {
+                this.analyticsData = data;
+                this.renderCharts();
+            },
+            error: (err: unknown) => {
+                console.error('Error loading analytics data:', err);
+            }
+        });
     }
 
     private renderCharts() {
-        if (!this.canvasRefs) return;
-
-        // Group sessions
-        this.groupedSessions = [
-            {
-                category: 'Accepted',
-                sessions: this.sessions.filter(s => s.cookieBannerHandled)
-            },
-            {
-                category: 'Ignored/Rejected',
-                sessions: this.sessions.filter(s => !s.cookieBannerHandled)
-            }
-        ];
-
-        // Wait for view update with setTimeout or assume change detection passes?
-        // Actually, we can't reliably render canvas immediately after changing groupedSessions because logic relies on *ngFor canvasRefs.
-        // We need CD to run.
-        // Quick fix: renderCharts logic is separated. But canvasRefs needs to match grouping.
-        // A better approach in Angular is separate component per chart or direct logic.
-        // For now, let's assume we call this only after view init / changes. But wait, changing groupedSessions changes DOM.
-        // We should move grouping to OnChanges and triggering render after a tick.
-
-    }
-
-    private drawCharts() {
-        if (!this.canvasRefs || this.canvasRefs.length !== this.groupedSessions.length) return;
+        if (!this.canvasRefs || this.sessions.length === 0) return;
 
         this.chartInstances.forEach(c => c.destroy());
         this.chartInstances = [];
 
-        this.canvasRefs.forEach((canvasRef, index) => {
-            const group = this.groupedSessions[index];
-            if (!group) return;
+        const browsers = ['chrome', 'firefox', 'brave'] as const;
+        const browserLabels = ['Chrome', 'Firefox', 'Brave'];
+        const browserColors = ['#4285F4', '#FF7139', '#FB542B'];
+
+        this.canvasRefs.forEach((canvasRef, configIndex) => {
+            const targetConfigValue = this.configValues[configIndex];
+
+            // Filtere Sessions NACH cookieBannerHandled
+            const filteredSessions = this.sessions.filter(
+                s => s.cookieBannerHandled === targetConfigValue
+            );
+
+            if (filteredSessions.length === 0) {
+                const ctx = canvasRef.nativeElement.getContext('2d');
+                if (ctx) {
+                    this.chartInstances.push(new ChartJS(ctx, {
+                        type: 'bar',
+                        data: { labels: [], datasets: [] },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    }));
+                }
+                return;
+            }
+
+            // Pro Browser: Total Cookies + Session-Anzahl
+            const totalCookiesPerBrowser = [0, 0, 0];
+            const browserSessionCounts = [0, 0, 0];
+
+            filteredSessions.forEach(session => {
+                const idx = browsers.indexOf(session.browser as typeof browsers[number]);
+                if (idx === -1) return;
+
+                // ← TYPE-FIX: (as any) für String(session.id)
+                const sessionKey = String(session.id);
+                const classified = (this.analyticsData as any)[sessionKey];
+                
+                if (classified) {
+                    const allCookies = [
+                        ...(classified.firstparty?.nontracking || []),
+                        ...(classified.firstparty?.tracking || []),
+                        ...(classified.thirdparty || [])
+                    ];
+                    totalCookiesPerBrowser[idx] += allCookies.length;
+                }
+                browserSessionCounts[idx]++;
+            });
+
+            // Ø Cookies pro Session und Browser
+            const browserAverages = totalCookiesPerBrowser.map((total, idx) =>
+                browserSessionCounts[idx] > 0 ? total / browserSessionCounts[idx] : 0
+            );
 
             const ctx = canvasRef.nativeElement.getContext('2d');
             if (!ctx) return;
 
-            const urls = group.sessions.map(s => s.url);
-            const browsers = ['Chrome', 'Firefox', 'Edge'];
-
-            const browserColors: { [key: string]: string } = {
-                'Chrome': '#FF6384',
-                'Firefox': '#36A2EB',
-                'Edge': '#FFCD56'
-            };
-
-            const datasets = browsers.map(browser => {
-                const dataPoints = group.sessions.map(session => {
-                    // Only populate if this session matches the browser
-                    if (session.browser !== browser) return 0;
-
-                    const sessionIdNum = parseInt(session.id, 10) || session.id as any;
-                    const sessionData = this.analyticsData[sessionIdNum];
-                    if (!sessionData) return 0;
-
-                    return (sessionData.firstparty.nontracking.length || 0) +
-                        (sessionData.firstparty.tracking.length || 0) +
-                        (sessionData.thirdparty.length || 0);
-                });
-
-                return {
-                    label: browser,
-                    data: dataPoints,
-                    backgroundColor: browserColors[browser],
-                    stack: 'stack1',
-                };
-            });
-
             const chart = new ChartJS(ctx, {
                 type: 'bar',
                 data: {
-                    labels: urls,
-                    datasets: datasets,
+                    labels: browserLabels,
+                    datasets: [{
+                        label: 'Ø Cookies pro Session',
+                        data: browserAverages,
+                        backgroundColor: browserColors,
+                        borderColor: browserColors.map(c => c + 'CC'),
+                        borderWidth: 1
+                    }],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'nearest',
-                        intersect: true,
-                        axis: 'x'
-                    },
-                    layout: {
-                        padding: {
-                            top: 25
-                        }
-                    },
                     plugins: {
                         legend: {
                             display: true
                         },
-                        title: {
-                            display: false,
-                        },
                         tooltip: {
-                            mode: 'nearest',
-                            intersect: true,
-                        },
-                        // @ts-ignore
-                        datalabels: {
-                            color: '#000',
-                            anchor: 'end',
-                            align: 'start',
-                            rotation: -90,
-                            offset: 4,
-                            display: (context: any) => {
-                                // Find which dataset is active for this index to avoid cluttered labels if possible, 
-                                // OR just show total? 
-                                // Since we stack and user only has 1 browser, only 1 value > 0.
-                                return context.dataset.data[context.dataIndex] > 0;
-                            },
-                            formatter: (value: any, context: any) => {
-                                const label = context.chart.data.labels[context.dataIndex];
-                                return label;
-                            },
-                            font: {
-                                weight: 'bold',
-                                size: 10
-                            },
-                            clamp: true,
-                            clip: true
-                        }
-                    },
-                    scales: {
-                        x: {
-                            stacked: true,
-                            title: {
-                                display: true,
-                                text: 'Session URL'
-                            },
-                            ticks: {
-                                maxRotation: 90,
-                                minRotation: 90,
-                                // Hide labels on X axis if too crowded, data labels show them on bars
-                                display: false
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                            callbacks: {
+                                title: (context) => {
+                                    const i = context[0].dataIndex;
+                                    const sessions = browserSessionCounts[i];
+                                    const total = totalCookiesPerBrowser[i];
+                                    return `${browserLabels[i]}\n${sessions} Sessions | Total: ${total} cookies`;
+                                },
+                                label: (context) => {
+                                    const avg = context.parsed.y;
+                                    return `Ø ${avg?.toFixed(1)} cookies/Session`;
+                                }
                             }
                         },
+                        datalabels: {
+                            display: true,
+                            color: 'black',
+                            font: { weight: 'bold', size: 12 },
+                            formatter: (value: number) => value.toFixed(1)
+                        } as Record<string, unknown>
+                    },
+                    scales: {
                         y: {
-                            stacked: true,
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Total Cookies'
-                            }
+                                text: 'Ø Cookies pro Session',
+                                font: { weight: 'bold' }
+                            },
+                            ticks: { stepSize: 1 }
                         },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Browser',
+                                font: { weight: 'bold' }
+                            }
+                        }
                     },
                 },
             });

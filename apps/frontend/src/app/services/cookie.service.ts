@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable } from 'rxjs';
 
 export interface Cookie {
   id: string;
@@ -12,7 +12,7 @@ export interface Cookie {
   isThirdParty: boolean;
   isTracking: boolean;
   sessionId: string;
-  createdAt: Date;
+  created_at: Date;
 }
 
 export interface CookieStats {
@@ -29,10 +29,14 @@ export interface CrawlSession {
   url: string;
   browser: string;
   jsEnabled: boolean;
-  cookieBannerHandled: string;
+  cookieBannerHandled: 'yes' | 'no' | 'opt';
   adBlockerEnabled: boolean;
   createdAt: Date;
   cookies?: Cookie[];
+  config?: {
+    cookies?: 'yes' | 'no' | 'opt';
+    [key: string]: unknown;
+  };
 }
 
 @Injectable({

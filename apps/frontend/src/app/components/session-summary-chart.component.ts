@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ElementRef, AfterViewInit, Input, OnChanges } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, AfterViewInit, Input, OnChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
     Chart as ChartJS,
@@ -10,7 +10,8 @@ import {
     Legend
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-import { CrawlSession, AnalyticsResult, ClassifiedCookies } from '../services/cookie.service';
+import { AnalyticsService, AnalyticsResult } from '../services/analytics.service';
+import { CrawlSession } from '../services/cookie.service';
 
 ChartJS.register(
     CategoryScale,
@@ -28,7 +29,7 @@ ChartJS.register(
     imports: [CommonModule],
     template: `
         <div class="chart-container">
-            <h3>Session Summary by Browser</h3>
+            <h3>Sessions by Cookie Acceptance (Average Cookies per Session)</h3>
             <div class="chart-wrapper">
                 <canvas #canvas></canvas>
             </div>
@@ -56,98 +57,98 @@ ChartJS.register(
         `,
     ],
 })
-export class SessionSummaryChartComponent implements OnInit, AfterViewInit {
+export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnChanges {
     @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
     @Input() sessions: CrawlSession[] = [];
-    @Input() analyticsData: AnalyticsResult = {};
 
     private chartInstance?: ChartJS;
-
-    ngOnChanges() {
-        this.renderChart();
-    }
+    private analyticsData: AnalyticsResult = {};
+    private analyticsService = inject(AnalyticsService);
 
     ngOnInit() {
+        this.loadAnalyticsData();
     }
 
     ngAfterViewInit(): void {
         this.renderChart();
     }
 
+    ngOnChanges() {
+        this.renderChart();
+    }
+
+    private loadAnalyticsData() {
+        this.analyticsService.getAnalytics().subscribe({
+            next: (data) => {
+                this.analyticsData = data;
+                this.renderChart();
+            },
+            error: (err) => {
+                console.error('Error loading analytics data:', err);
+            }
+        });
+    }
+
     private renderChart() {
-        if (!this.canvasRef) return;
+        if (!this.canvasRef || !this.sessions.length) return;
 
         const ctx = this.canvasRef.nativeElement.getContext('2d');
         if (!ctx) return;
 
-        // Process Data
-        const browsers = ['Chrome', 'Firefox', 'Brave'];
-        // Group by what? Real data doesn't have 'categories' like 'Accept/Reject' explicitly unless we infer from cookieBannerHandled
-        // Let's use 'Cookie Action' as categories: 'Accepted' (handled=true), 'Ignored/Rejected' (handled=false)
-        const categories = ['Accepted', 'Ignored/Rejected', 'Optional'];
+        // Kategorisiere Sessions basierend auf cookieBannerHandled
+        const acceptedSessions = this.sessions.filter(s => s.cookieBannerHandled === 'yes');
+        const rejectedSessions = this.sessions.filter(s => s.cookieBannerHandled === 'no');
+        const optionalSessions = this.sessions.filter(s => s.cookieBannerHandled === 'opt');
 
-        // Calculate Averages
-        const dataByBrowser: { [browser: string]: number[] } = {};
+        // Berechne durchschnittliche Cookie-Counts pro Kategorie
+        const categories = ['Accepted (yes)', 'Rejected (no)', 'Optional (opt)'];
+        const sessionGroups = [acceptedSessions, rejectedSessions, optionalSessions];
 
-        browsers.forEach(browser => {
-            dataByBrowser[browser] = categories.map(category => {
+        const averageCookies = sessionGroups.map(group => {
+            if (group.length === 0) return 0;
+            let totalCookies = 0;
 
-                // Find sessions for this browser and category
-                const relevantSessions = this.sessions.filter(s =>
-                    s.browser === browser && s.cookieBannerHandled === isAccepted
-                );
-
-                if (relevantSessions.length === 0) return 0;
-
-                let totalCookies = 0;
-                relevantSessions.forEach(session => {
-                    const sessionIdNum = parseInt(session.id, 10) || session.id as any;
-                    const sessionData = this.analyticsData[sessionIdNum];
-
-                    if (sessionData) {
-                        const count = (sessionData.firstparty.nontracking.length || 0) +
-                            (sessionData.firstparty.tracking.length || 0) +
-                            (sessionData.thirdparty.length || 0);
-                        totalCookies += count;
-                    }
-                });
-
-                return parseFloat((totalCookies / relevantSessions.length).toFixed(1));
+            group.forEach(session => {
+                const classified = this.analyticsData[session.id as unknown as number];
+                if (classified) {
+                    const count = 
+                        classified.firstparty.tracking.length +
+                        classified.firstparty.nontracking.length +
+                        classified.thirdparty.length;
+                    totalCookies += count;
+                }
             });
+
+            return parseFloat((totalCookies / group.length).toFixed(1));
         });
 
-        const browserColors: { [key: string]: string } = {
-            'Chrome': '#FF6384',
-            'Firefox': '#36A2EB',
-            'Edge': '#FFCD56'
-        };
-
-        const datasets = browsers.map(browser => ({
-            label: browser,
-            data: dataByBrowser[browser],
-            backgroundColor: browserColors[browser],
-            // grouped bar chart by default in Chart.js, no stack needed
-        }));
+        if (this.chartInstance) {
+            this.chartInstance.destroy();
+        }
 
         this.chartInstance = new ChartJS(ctx, {
             type: 'bar',
             data: {
                 labels: categories,
-                datasets: datasets,
+                datasets: [
+                    {
+                        label: 'Average Cookies per Session',
+                        data: averageCookies,
+                        backgroundColor: ['#36A2EB', '#FF6384', '#FFCD56'],
+                    }
+                ],
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     title: {
-                        display: true,
-                        text: 'Average Cookies per Session'
+                        display: false
                     },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
                     },
-                    // @ts-ignore
                     datalabels: {
                         display: true,
                         anchor: 'end',
@@ -156,7 +157,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit {
                         font: {
                             weight: 'bold'
                         }
-                    }
+                    } as Record<string, unknown>
                 },
                 scales: {
                     y: {
