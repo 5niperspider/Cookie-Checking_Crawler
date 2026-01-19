@@ -28,13 +28,15 @@ import { CookieStats } from '../services/cookie.service';
     `,
   ],
 })
+
+// CookieOverviewChartComponent
 export class CookieOverviewChartComponent implements OnInit, AfterViewInit {
   @Input() stats?: CookieStats;
   @ViewChild('pieCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
-  
+
   private chart?: Chart;
 
-  ngOnInit() {}
+  ngOnInit() { }
 
   ngAfterViewInit() {
     if (this.stats && this.canvasRef) {
@@ -48,6 +50,7 @@ export class CookieOverviewChartComponent implements OnInit, AfterViewInit {
     }
   }
 
+  // Create Chart
   private createChart() {
     if (!this.canvasRef || !this.stats) return;
 
@@ -85,6 +88,7 @@ export class CookieOverviewChartComponent implements OnInit, AfterViewInit {
     });
   }
 
+  // Update Chart
   private updateChart() {
     if (!this.chart || !this.stats) return;
 

@@ -100,6 +100,8 @@ import { CookieTableComponent } from './cookie-table.component';
     .chart-wrapper { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; }
   `]
 })
+
+// AnalyticsDashboardComponentS
 export class AnalyticsDashboardComponent implements OnInit {
   sessions: CrawlSession[] = [];
   selectedUrl = '';
@@ -117,10 +119,12 @@ export class AnalyticsDashboardComponent implements OnInit {
   private cookieService = inject(CookieService);
   private analyticsService = inject(AnalyticsService);
 
+  // Initialisierung
   ngOnInit() {
     this.loadAllData();
   }
 
+  // Sessions und AnalyticsData laden
   private loadAllData() {
     // 1. Sessions laden
     this.cookieService.getSessions().subscribe({

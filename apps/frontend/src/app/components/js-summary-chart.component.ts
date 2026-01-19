@@ -78,6 +78,7 @@ ChartJS.register(
         }
     `]
 })
+// Chart component for comparing cookies with JS enabled vs disabled
 export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges {
     @ViewChildren('canvasJsActive') canvasJsActive!: QueryList<ElementRef<HTMLCanvasElement>>;
     @ViewChildren('canvasJsInactive') canvasJsInactive!: QueryList<ElementRef<HTMLCanvasElement>>;
@@ -99,6 +100,7 @@ export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges
         setTimeout(() => this.renderCharts(), 0);
     }
 
+    // Render charts
     private renderCharts() {
         if (!this.canvasJsActive || !this.canvasJsInactive || this.sessions.length === 0) return;
 
@@ -175,6 +177,7 @@ export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges
         }
     }
 
+    // Create stacked chart
     private createStackedChart(
         ctx: CanvasRenderingContext2D,
         title: string,

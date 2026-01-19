@@ -7,8 +7,6 @@ import { CookiesByDomainChartComponent } from '../components/cookies-by-domain-c
 import { CookieTableComponent } from '../components/cookie-table.component';
 import { SessionSummaryChartComponent } from '../components/session-summary-chart.component';
 
-
-
 @Component({
   selector: 'app-analytics-dashboard',
   standalone: true,

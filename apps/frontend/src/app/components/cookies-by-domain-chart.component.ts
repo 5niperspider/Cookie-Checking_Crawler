@@ -125,6 +125,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
         this.renderCharts();
     }
 
+    // Set container layout
     setContainerLayout(layout: 'row' | 'column') {
         this.containerLayout = layout;
         // Trigger resize to ensure charts adapt to new container width
@@ -133,6 +134,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
         }, 0);
     }
 
+    // Load analytics data
     private loadAnalyticsData() {
         this.analyticsService.getAnalytics().subscribe({
             next: (data: AnalyticsResult) => {
@@ -145,6 +147,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
         });
     }
 
+    // Render charts
     private renderCharts() {
         if (!this.canvasRefs || this.sessions.length === 0) return;
 
@@ -168,6 +171,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
 
             const uniqueUrls = Array.from(new Set(categorySessions.map(s => s.url))).sort();
 
+            // 2. Create datasets for each browser
             const datasets = browsers.map((browserLabel, bIdx) => {
                 const browserKey = browserKeys[bIdx];
                 const dataPoints = uniqueUrls.map(url => {
@@ -176,6 +180,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                     );
                     if (matchingSessions.length === 0) return 0;
 
+                    // 3. Calculate total cookies for each URL
                     let total = 0;
                     matchingSessions.forEach(sess => {
                         const classified = (this.analyticsData as any)[String(sess.id)];
@@ -201,7 +206,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
             return { hasData: true, labels: uniqueUrls, datasets };
         });
 
-        // 2. Find Global Max Y
+        // 4. Find Global Max Y
         let globalMaxY = 0;
         preparedData.forEach(item => {
             if (item.hasData) {
@@ -212,7 +217,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
             }
         });
 
-        // 3. Render Charts
+        // 5. Render Charts
         this.canvasRefs.forEach((canvasRef, index) => {
             const data = preparedData[index];
             const ctx = canvasRef.nativeElement.getContext('2d');
@@ -236,6 +241,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                     return;
                 }
 
+                // 6. Render Chart  
                 const chart = new ChartJS(ctx, {
                     type: 'bar',
                     data: {

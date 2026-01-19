@@ -57,6 +57,7 @@ ChartJS.register(
         `,
     ],
 })
+// Chart component for comparing cookies with JS enabled vs disabled
 export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnChanges {
     @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
     @Input() sessions: CrawlSession[] = [];
@@ -77,6 +78,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
         this.renderChart();
     }
 
+    // Load analytics data
     private loadAnalyticsData() {
         this.analyticsService.getAnalytics().subscribe({
             next: (data) => {
@@ -89,6 +91,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
         });
     }
 
+    // Render chart
     private renderChart() {
         if (!this.canvasRef || !this.sessions.length) return;
 
@@ -155,7 +158,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
             });
 
             // Push datasets
-            // Tracking (Solid)
+            // Tracking 
             datasets.push({
                 label: `${browserLabel} (Tracking)`,
                 data: trackingData,
@@ -165,7 +168,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                 categoryPercentage: 0.9
             });
 
-            // Other (Light)
+            // Other 
             datasets.push({
                 label: `${browserLabel} (Other)`,
                 data: otherData,
@@ -206,7 +209,6 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                         mode: 'index',
                         intersect: false,
                         callbacks: {
-                            // Optional: Add total to tooltip footer? Or just rely on separate items.
                         }
                     },
                     legend: {
@@ -214,24 +216,16 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                         labels: {
                             padding: 20,
                             filter: (item) => {
-                                // Optional: clean up legend if it's too crowded, but user didn't ask.
-                                // Showing all 6 items (3 browsers * 2 types) is probably fine.
                                 return true;
                             }
                         }
                     },
                     datalabels: {
                         display: true,
-                        anchor: 'center', // Center of each stack segment
+                        anchor: 'center',
                         align: 'center',
                         formatter: (value: number) => value > 0 ? value : '',
-                        color: 'black', // Maybe white on dark? keeping it simple black for now or conditionally?
-                        // If values are small, labels might overlap.
-                        // I'll leave as is, or maybe 'white' for solid bars?
-                        // Let's stick to default/black for visibility on light colors. 
-                        // Actually, on solid dark(ish) colors, white is better.
-                        // But on light colors, black is better.
-                        // I'll use a dynamic color function if needed, but for now simple:
+                        color: 'black',
                         font: {
                             weight: 'bold'
                         }
