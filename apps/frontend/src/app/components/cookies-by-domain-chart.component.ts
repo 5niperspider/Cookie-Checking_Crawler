@@ -156,55 +156,37 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
         const browserKeys = ['chrome', 'firefox', 'brave'];
         const browserColors = ['#FF6384', '#36A2EB', '#FF9F40'];
 
-        this.canvasRefs.forEach((canvasRef, configIndex) => {
-            const targetConfigValue = this.configValues[configIndex];
-
-            // 1. Filter sessions for this Chart Category
+        // 1. Pre-calculate data for all charts to find Global Max Y
+        const preparedData = this.configValues.map(configValue => {
             const categorySessions = this.sessions.filter(
-                s => s.cookieBannerHandled === targetConfigValue
+                s => s.cookieBannerHandled === configValue
             );
 
             if (categorySessions.length === 0) {
-                 // Empty placeholder chart
-                const ctx = canvasRef.nativeElement.getContext('2d');
-                if (ctx) {
-                    this.chartInstances.push(new ChartJS(ctx, {
-                        type: 'bar',
-                        data: { labels: [], datasets: [] },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    }));
-                }
-                return;
+                return { hasData: false, labels: [], datasets: [] };
             }
 
-            // 2. Extract Unique URLs for X-Axis
             const uniqueUrls = Array.from(new Set(categorySessions.map(s => s.url))).sort();
 
-            // 3. Build Datasets (Stack by Browser)
             const datasets = browsers.map((browserLabel, bIdx) => {
                 const browserKey = browserKeys[bIdx];
-                
                 const dataPoints = uniqueUrls.map(url => {
-                    // Find all sessions for this specific URL + Browser
-                    const matchingSessions = categorySessions.filter(s => 
+                    const matchingSessions = categorySessions.filter(s =>
                         s.url === url && s.browser?.toLowerCase() === browserKey
                     );
-
                     if (matchingSessions.length === 0) return 0;
 
-                    // Calculate Average Cookies
                     let total = 0;
                     matchingSessions.forEach(sess => {
                         const classified = (this.analyticsData as any)[String(sess.id)];
                         if (classified) {
-                             const count = 
+                            const count =
                                 (classified.firstparty?.nontracking?.length || 0) +
                                 (classified.firstparty?.tracking?.length || 0) +
                                 (classified.thirdparty?.length || 0);
                             total += count;
                         }
                     });
-                    
                     return parseFloat((total / matchingSessions.length).toFixed(1));
                 });
 
@@ -216,14 +198,61 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                 };
             });
 
-            // 4. Create Chart
+            return { hasData: true, labels: uniqueUrls, datasets };
+        });
+
+        // 2. Find Global Max Y (considering STACKED values)
+        let globalMaxY = 0;
+        preparedData.forEach(item => {
+            if (item.hasData && item.labels.length > 0) {
+                // Calculate total height for each bar (URL)
+                // We assume all datasets have the same length matching labels
+                const numBars = item.labels.length;
+                for (let i = 0; i < numBars; i++) {
+                    let totalStackHeight = 0;
+                    item.datasets.forEach(ds => {
+                        totalStackHeight += (ds.data[i] || 0);
+                    });
+                    if (totalStackHeight > globalMaxY) {
+                        globalMaxY = totalStackHeight;
+                    }
+                }
+            }
+        });
+
+        // Ensure rounding up to handle decimals and add a small buffer?
+        // Actually, just ceil to nearest integer is often safer for axes.
+        globalMaxY = Math.ceil(globalMaxY);
+
+        // 3. Render Charts
+        this.canvasRefs.forEach((canvasRef, index) => {
+            const data = preparedData[index];
             const ctx = canvasRef.nativeElement.getContext('2d');
+
             if (ctx) {
+                // If no data, render empty chart
+                if (!data.hasData) {
+                    this.chartInstances.push(new ChartJS(ctx, {
+                        type: 'bar',
+                        data: { labels: [], datasets: [] },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    suggestedMax: globalMaxY || 10 // Use global max even for empty to align? Or default.
+                                }
+                            }
+                        }
+                    }));
+                    return;
+                }
+
                 const chart = new ChartJS(ctx, {
                     type: 'bar',
                     data: {
-                        labels: uniqueUrls,
-                        datasets: datasets
+                        labels: data.labels,
+                        datasets: data.datasets
                     },
                     options: {
                         responsive: true,
@@ -240,7 +269,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                                 mode: 'index',
                                 intersect: false
                             },
-                             datalabels: {
+                            datalabels: {
                                 display: true,
                                 color: 'black',
                                 font: { weight: 'bold', size: 10 },
@@ -258,13 +287,14 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                                 },
                                 ticks: {
                                     maxRotation: 90,
-                                    minRotation: 90 // Rotate labels for readability
+                                    minRotation: 90
                                 }
                             },
                             y: {
                                 stacked: true,
                                 beginAtZero: true,
                                 grace: '5%',
+                                suggestedMax: globalMaxY, // <--- Synchronized Y-Axis
                                 title: {
                                     display: true,
                                     text: 'Total Cookies'

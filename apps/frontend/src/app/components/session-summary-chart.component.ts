@@ -98,46 +98,82 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
         // Categories (X-Axis)
         const categories = ['Ablehnen', 'Akzeptieren', 'Optional'];
         const configValues = ['no', 'yes', 'opt'] as const;
-        
+
         // Browsers (Datasets)
         const browsers = ['Chrome', 'Firefox', 'Brave'];
-        const browserKeys = ['chrome', 'firefox', 'brave']; 
+        const browserKeys = ['chrome', 'firefox', 'brave'];
         // Colors: Chrome (Pink), Firefox (Blue), Brave (Orange)
+        // Solid for Tracking, Transparent/Light for Other
         const browserColors = ['#FF6384', '#36A2EB', '#FF9F40'];
+        const browserColorsLight = ['#FF638480', '#36A2EB80', '#FF9F4080']; // 50% opacity
 
-        const datasets = browsers.map((browserLabel, browserIndex) => {
+        const datasets: any[] = [];
+
+        browsers.forEach((browserLabel, browserIndex) => {
             const browserKey = browserKeys[browserIndex];
-            
-            const data = configValues.map(configValue => {
-                // Determine matching sessions for this Browser AND Category
-                const group = this.sessions.filter(s => 
-                    s.browser?.toLowerCase() === browserKey && 
+
+            // 1. Data for "Tracking Cookies" (Bottom of stack)
+            const trackingData = configValues.map(configValue => {
+                const group = this.sessions.filter(s =>
+                    s.browser?.toLowerCase() === browserKey &&
                     s.cookieBannerHandled === configValue
                 );
-
                 if (group.length === 0) return 0;
-                
-                let totalCookies = 0;
+
+                let sum = 0;
                 group.forEach(session => {
                     const classified = this.analyticsData[String(session.id)];
                     if (classified) {
-                        const count = 
+                        // Tracking = First-party Tracking + Third-party
+                        const count =
                             (classified.firstparty?.tracking?.length || 0) +
-                            (classified.firstparty?.nontracking?.length || 0) +
                             (classified.thirdparty?.length || 0);
-                        totalCookies += count;
+                        sum += count;
                     }
                 });
-                return parseFloat((totalCookies / group.length).toFixed(1));
+                return parseFloat((sum / group.length).toFixed(1));
             });
 
-            return {
-                label: browserLabel,
-                data: data,
+            // 2. Data for "Other Cookies" (Top of stack)
+            const otherData = configValues.map(configValue => {
+                const group = this.sessions.filter(s =>
+                    s.browser?.toLowerCase() === browserKey &&
+                    s.cookieBannerHandled === configValue
+                );
+                if (group.length === 0) return 0;
+
+                let sum = 0;
+                group.forEach(session => {
+                    const classified = this.analyticsData[String(session.id)];
+                    if (classified) {
+                        // Other = First-party Non-tracking
+                        const count = (classified.firstparty?.nontracking?.length || 0);
+                        sum += count;
+                    }
+                });
+                return parseFloat((sum / group.length).toFixed(1));
+            });
+
+            // Push datasets
+            // Tracking (Solid)
+            datasets.push({
+                label: `${browserLabel} (Tracking)`,
+                data: trackingData,
                 backgroundColor: browserColors[browserIndex],
+                stack: browserKey, // Stack Group
                 barPercentage: 0.8,
                 categoryPercentage: 0.9
-            };
+            });
+
+            // Other (Light)
+            datasets.push({
+                label: `${browserLabel} (Other)`,
+                data: otherData,
+                backgroundColor: browserColorsLight[browserIndex],
+                stack: browserKey, // Stack Group
+                barPercentage: 0.8,
+                categoryPercentage: 0.9
+            });
         });
 
         if (this.chartInstance) {
@@ -161,7 +197,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Average Cookies per Session',
+                        text: 'Average Cookies (Tracking vs Other)',
                         padding: {
                             bottom: 20
                         }
@@ -169,18 +205,33 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                     tooltip: {
                         mode: 'index',
                         intersect: false,
+                        callbacks: {
+                            // Optional: Add total to tooltip footer? Or just rely on separate items.
+                        }
                     },
                     legend: {
                         position: 'top',
                         labels: {
-                            padding: 20
+                            padding: 20,
+                            filter: (item) => {
+                                // Optional: clean up legend if it's too crowded, but user didn't ask.
+                                // Showing all 6 items (3 browsers * 2 types) is probably fine.
+                                return true;
+                            }
                         }
                     },
                     datalabels: {
                         display: true,
-                        anchor: 'end',
-                        align: 'top',
+                        anchor: 'center', // Center of each stack segment
+                        align: 'center',
                         formatter: (value: number) => value > 0 ? value : '',
+                        color: 'black', // Maybe white on dark? keeping it simple black for now or conditionally?
+                        // If values are small, labels might overlap.
+                        // I'll leave as is, or maybe 'white' for solid bars?
+                        // Let's stick to default/black for visibility on light colors. 
+                        // Actually, on solid dark(ish) colors, white is better.
+                        // But on light colors, black is better.
+                        // I'll use a dynamic color function if needed, but for now simple:
                         font: {
                             weight: 'bold'
                         }
@@ -190,12 +241,14 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                     y: {
                         beginAtZero: true,
                         grace: '10%',
+                        stacked: true, // Enable stacking on Y
                         title: {
                             display: true,
                             text: 'Avg Cookies'
                         }
                     },
                     x: {
+                        stacked: true, // Enable stacking on X (within groups defined by 'stack')
                         title: {
                             display: true,
                             text: 'Category'

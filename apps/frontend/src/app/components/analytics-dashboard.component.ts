@@ -6,7 +6,7 @@ import { AnalyticsService } from '../services/analytics.service';
 import { CookieOverviewChartComponent } from './cookie-overview-chart.component';
 import { CookiesByDomainChartComponent } from './cookies-by-domain-chart.component';
 import { SessionSummaryChartComponent } from './session-summary-chart.component';
-import { TrackingSummaryChartComponent } from './tracking-summary-chart.component';
+
 import { JsSummaryChartComponent } from './js-summary-chart.component';
 import { CookieTableComponent } from './cookie-table.component';
 
@@ -20,7 +20,7 @@ import { CookieTableComponent } from './cookie-table.component';
     CookiesByDomainChartComponent,
     CookieTableComponent,
     SessionSummaryChartComponent,
-    TrackingSummaryChartComponent,
+
     JsSummaryChartComponent
   ],
   template: `
@@ -30,7 +30,6 @@ import { CookieTableComponent } from './cookie-table.component';
       
       <div class="summary-charts-row">
         <app-session-summary-chart [sessions]="sessions"></app-session-summary-chart>
-        <app-tracking-summary-chart [sessions]="sessions"></app-tracking-summary-chart>
       </div>
 
       <app-js-summary-chart [sessions]="sessions" [analyticsData]="analyticsData"></app-js-summary-chart>
@@ -87,10 +86,7 @@ import { CookieTableComponent } from './cookie-table.component';
   `,
   styles: [`
     .dashboard-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-    .summary-charts-row { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px; }
-    @media (min-width: 900px) {
-        .summary-charts-row { grid-template-columns: 1fr 1fr; }
-    }
+    .summary-charts-row { margin-bottom: 20px; }
     .filters-section { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
     .filter-group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .filter-group label { font-weight: 500; min-width: 120px; }
