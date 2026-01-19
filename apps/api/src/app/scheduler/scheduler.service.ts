@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service';
 import { CrawlerService } from '../crawler.service';
 
-const configLength = 12;
+const configLength = 18
 
 type TaskStatus = 'scheduled' | 'in-progress' | 'completed' | 'failed';
 

@@ -7,6 +7,7 @@ import { CookieOverviewChartComponent } from './cookie-overview-chart.component'
 import { CookiesByDomainChartComponent } from './cookies-by-domain-chart.component';
 import { SessionSummaryChartComponent } from './session-summary-chart.component';
 import { TrackingSummaryChartComponent } from './tracking-summary-chart.component';
+import { JsSummaryChartComponent } from './js-summary-chart.component';
 import { CookieTableComponent } from './cookie-table.component';
 
 @Component({
@@ -19,7 +20,8 @@ import { CookieTableComponent } from './cookie-table.component';
     CookiesByDomainChartComponent,
     CookieTableComponent,
     SessionSummaryChartComponent,
-    TrackingSummaryChartComponent
+    TrackingSummaryChartComponent,
+    JsSummaryChartComponent
   ],
   template: `
     <div class="dashboard-container">
@@ -30,6 +32,8 @@ import { CookieTableComponent } from './cookie-table.component';
         <app-session-summary-chart [sessions]="sessions"></app-session-summary-chart>
         <app-tracking-summary-chart [sessions]="sessions"></app-tracking-summary-chart>
       </div>
+
+      <app-js-summary-chart [sessions]="sessions" [analyticsData]="analyticsData"></app-js-summary-chart>
 
       <!-- URL Filter -->
       <div class="filters-section">
@@ -104,12 +108,12 @@ export class AnalyticsDashboardComponent implements OnInit {
   sessions: CrawlSession[] = [];
   selectedUrl = '';
   uniqueUrls: string[] = [];
-  
+
   // Signals für URL-Daten
   filteredSessions = signal<CrawlSession[]>([]);
   urlStats = signal<any>(null);
   urlCookies = signal<any[]>([]);
-  
+
   // Globale Daten
   globalStats: any = null;
   analyticsData: any = {};
@@ -152,7 +156,7 @@ export class AnalyticsDashboardComponent implements OnInit {
     if (this.selectedUrl) {
       const urlSessions = this.sessions.filter(s => s.url === this.selectedUrl);
       this.filteredSessions.set(urlSessions);
-      
+
       // ← LOKAL berechnen 
       this.urlStats.set(this.calculateStats(urlSessions));
       this.urlCookies.set(this.collectUrlCookies(urlSessions));
@@ -166,14 +170,14 @@ export class AnalyticsDashboardComponent implements OnInit {
   // ← LOKALE Stats-Berechnung
   private calculateStats(sessions: CrawlSession[]): any {
     let total = 0, thirdParty = 0, tracking = 0, firstParty = 0;
-    
+
     sessions.forEach(session => {
       const classified = this.analyticsData[String(session.id)];
       if (classified) {
         const nontracking = classified.firstparty?.nontracking?.length || 0;
         const trackingCookies = classified.firstparty?.tracking?.length || 0;
         const thirdPartyCookies = classified.thirdparty?.length || 0;
-        
+
         total += nontracking + trackingCookies + thirdPartyCookies;
         firstParty += nontracking + trackingCookies;
         thirdParty += thirdPartyCookies;
