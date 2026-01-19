@@ -3,6 +3,7 @@ import { CookiesController } from './cookies.controller';
 import { CookiesService } from './cookies.service';
 import { DbService } from '../db/db.service';
 
+// Module to bundle cookie-related components
 @Module({
   controllers: [CookiesController],
   providers: [CookiesService, DbService],

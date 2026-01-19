@@ -5,6 +5,7 @@ import { SchedulerService } from '../scheduler/scheduler.service';
 import { CrawlerService } from '../crawler.service';
 import { CrawlerConfigService } from '../crawler.config';
 
+// Sessions Module
 @Module({
   imports: [],
   controllers: [SessionsController],

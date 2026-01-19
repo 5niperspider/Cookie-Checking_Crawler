@@ -3,6 +3,7 @@ import puppeteer, { Browser, Page } from 'puppeteer';
 import { DbService, NewCookie } from './db/db.service';
 import { CrawlerConfigService, CrawlerConfig } from './crawler.config';
 
+// Service responsible for crawling web pages and extracting cookies
 @Injectable()
 export class CrawlerService {
   constructor(
@@ -18,6 +19,7 @@ export class CrawlerService {
     let browser: Browser | null = null;
     let page: Page | null = null;
 
+    // Fetch crawler configuration from the database
     try {
       console.log(
         `\n[Session ${sessionId}] Fetching config ID ${configId} from database...`
@@ -30,6 +32,7 @@ export class CrawlerService {
 
       const isFirefox = config.browser === 'firefox';
 
+      // Launch Puppeteer with the specified browser and configuration
       console.log(`[Puppeteer] Launching ${config.browser}...`);
       browser = await puppeteer
         .launch({
@@ -40,6 +43,7 @@ export class CrawlerService {
           executablePath: config.browserConfig.executablePath,
         })
         .catch((error) => {
+          // Handle common launch errors
           console.error(`Failed to launch ${config.browser}:`, error.message);
           if (error.message.includes('ENOENT')) {
             throw new Error(
@@ -56,14 +60,17 @@ export class CrawlerService {
           );
         });
 
+        // Open a new page and configure it
       page = await browser.newPage();
       if (!isFirefox) {
         await page.setJavaScriptEnabled(config.jsEnabled);
       }
 
+      // Set navigation and selector timeouts
       page.setDefaultNavigationTimeout(config.timeouts.navigation);
       page.setDefaultTimeout(config.timeouts.waitForSelector);
 
+      // Navigate to the target URL
       await page.goto(url, {
         waitUntil: 'networkidle0',
         timeout: 30000,
@@ -76,6 +83,7 @@ export class CrawlerService {
         // Ignore timeout errors
       }
 
+      // Helper function to sleep for a specified duration
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
       // statt page.waitForTimeout(2000)
@@ -94,11 +102,14 @@ export class CrawlerService {
         allCookies = await browser.cookies();
       }
 
+      // Include cookies from all frames
       const frameCookies = await page.browserContext().cookies();
       allCookies.push(...frameCookies);
 
+      // Deduplicate cookies based on name, domain, and path
       const cookies = this.deduplicateCookies(allCookies);
 
+      // Store cookies in the database
       console.log(
         `[Session ${sessionId}] Found ${cookies.length} cookies with config ${configId}`
       );
@@ -123,14 +134,17 @@ export class CrawlerService {
         await this.dbService.createCookie(cookieData);
       }
 
+      // Log successful crawl
       console.log(
         `[Session ${sessionId}] Successfully crawled ${url} with config ${configId}`
       );
       return true;
     } catch (error) {
+      // Log and rethrow errors for higher-level handling
       console.error(`Error crawling ${url}:`, error);
       throw error;
     } finally {
+      // Ensure proper cleanup of resources
       if (page) {
         await page.close().catch(() => console.warn('Error closing page'));
       }
@@ -142,6 +156,7 @@ export class CrawlerService {
     }
   }
 
+  // Deduplicate cookies based on name, domain, and path
   private deduplicateCookies(cookies: any[]): any[] {
     const seen = new Set<string>();
     return cookies.filter((cookie) => {
