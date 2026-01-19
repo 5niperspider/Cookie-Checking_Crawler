@@ -208,7 +208,42 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                     tooltip: {
                         mode: 'index',
                         intersect: false,
+                        filter: (item) => {
+                            // Only show the "Tracking" entry, but we'll sum the "Other" value into it
+                            return item.dataset.label ? !item.dataset.label.includes('(Other)') : true;
+                        },
                         callbacks: {
+                            label: (context) => {
+                                const label = context.dataset.label || '';
+                                // "Chrome (Tracking)" -> "Chrome"
+                                const browserName = label.replace(' (Tracking)', '');
+
+                                // Get Tracking value
+                                const valTracking = context.parsed.y || 0;
+
+                                // Get Other value (from sibling dataset)
+                                let valOther = 0;
+                                const otherLabel = `${browserName} (Other)`;
+                                context.chart.data.datasets.forEach(ds => {
+                                    if (ds.label === otherLabel) {
+                                        valOther = ds.data[context.dataIndex] as number || 0;
+                                    }
+                                });
+
+                                const total = valTracking + valOther;
+                                // Match screenshot format (comma for decimal) if desired, but standard is fine.
+                                // Screenshot had "2,8". Let's try to match it.
+                                return `${browserName}: ${total.toFixed(1).replace('.', ',')}`;
+                            },
+                            footer: (tooltipItems) => {
+                                let sum = 0;
+                                // We need to sum ALL datasets at this index, not just the filtered visible ones
+                                const index = tooltipItems[0].dataIndex;
+                                tooltipItems[0].chart.data.datasets.forEach(ds => {
+                                    sum += (ds.data[index] as number || 0);
+                                });
+                                return 'Total Avg: ' + sum.toFixed(1).replace('.', ',');
+                            }
                         }
                     },
                     legend: {

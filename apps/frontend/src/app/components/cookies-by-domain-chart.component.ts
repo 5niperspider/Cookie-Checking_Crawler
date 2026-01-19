@@ -206,16 +206,23 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
             return { hasData: true, labels: uniqueUrls, datasets };
         });
 
-        // 4. Find Global Max Y
+        // 4. Find Global Max Y (considering STACKED values)
         let globalMaxY = 0;
         preparedData.forEach(item => {
-            if (item.hasData) {
-                item.datasets.forEach(ds => {
-                    const maxInDs = Math.max(...ds.data);
-                    if (maxInDs > globalMaxY) globalMaxY = maxInDs;
-                });
+            if (item.hasData && item.labels.length > 0) {
+                const numBars = item.labels.length;
+                for (let i = 0; i < numBars; i++) {
+                    let totalStackHeight = 0;
+                    item.datasets.forEach(ds => {
+                        totalStackHeight += (ds.data[i] || 0);
+                    });
+                    if (totalStackHeight > globalMaxY) {
+                        globalMaxY = totalStackHeight;
+                    }
+                }
             }
         });
+        globalMaxY = Math.ceil(globalMaxY);
 
         // 5. Render Charts
         this.canvasRefs.forEach((canvasRef, index) => {
@@ -233,7 +240,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                             maintainAspectRatio: false,
                             scales: {
                                 y: {
-                                    suggestedMax: globalMaxY || 10 // Use global max even for empty to align? Or default.
+                                    suggestedMax: globalMaxY || 10
                                 }
                             }
                         }
@@ -261,7 +268,14 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
                             },
                             tooltip: {
                                 mode: 'index',
-                                intersect: false
+                                intersect: false,
+                                callbacks: {
+                                    footer: (tooltipItems) => {
+                                        let sum = 0;
+                                        tooltipItems.forEach(t => sum += (t.parsed.y || 0));
+                                        return 'Total Avg: ' + sum.toFixed(1);
+                                    }
+                                }
                             },
                             datalabels: {
                                 display: true,
