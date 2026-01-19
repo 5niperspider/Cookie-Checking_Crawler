@@ -8,7 +8,7 @@ export class CrawlerService {
   constructor(
     private readonly dbService: DbService,
     private readonly configService: CrawlerConfigService
-  ) {}
+  ) { }
 
   async crawler(
     url: string,

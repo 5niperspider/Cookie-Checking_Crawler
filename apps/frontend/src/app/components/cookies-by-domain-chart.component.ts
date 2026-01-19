@@ -201,28 +201,16 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
             return { hasData: true, labels: uniqueUrls, datasets };
         });
 
-        // 2. Find Global Max Y (considering STACKED values)
+        // 2. Find Global Max Y
         let globalMaxY = 0;
         preparedData.forEach(item => {
-            if (item.hasData && item.labels.length > 0) {
-                // Calculate total height for each bar (URL)
-                // We assume all datasets have the same length matching labels
-                const numBars = item.labels.length;
-                for (let i = 0; i < numBars; i++) {
-                    let totalStackHeight = 0;
-                    item.datasets.forEach(ds => {
-                        totalStackHeight += (ds.data[i] || 0);
-                    });
-                    if (totalStackHeight > globalMaxY) {
-                        globalMaxY = totalStackHeight;
-                    }
-                }
+            if (item.hasData) {
+                item.datasets.forEach(ds => {
+                    const maxInDs = Math.max(...ds.data);
+                    if (maxInDs > globalMaxY) globalMaxY = maxInDs;
+                });
             }
         });
-
-        // Ensure rounding up to handle decimals and add a small buffer?
-        // Actually, just ceil to nearest integer is often safer for axes.
-        globalMaxY = Math.ceil(globalMaxY);
 
         // 3. Render Charts
         this.canvasRefs.forEach((canvasRef, index) => {
