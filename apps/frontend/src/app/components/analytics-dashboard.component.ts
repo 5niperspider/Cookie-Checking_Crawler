@@ -144,10 +144,12 @@ export class AnalyticsDashboardComponent implements OnInit {
     });
   }
 
+  // Unique URLs aktualisieren
   private updateUniqueUrls() {
     this.uniqueUrls = Array.from(new Set(this.sessions.map(s => s.url))).sort();
   }
 
+  // URL-Filter
   onUrlChange() {
     if (this.selectedUrl) {
       const urlSessions = this.sessions.filter(s => s.url === this.selectedUrl);

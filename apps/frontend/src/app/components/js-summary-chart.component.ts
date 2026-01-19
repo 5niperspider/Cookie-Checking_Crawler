@@ -139,8 +139,10 @@ export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges
                     }
                 });
 
-                trackingCounts.push(trackingSum);
-                otherCounts.push(otherSum);
+                // Calculate Averages
+                const count = targetSessions.length;
+                trackingCounts.push(count > 0 ? parseFloat((trackingSum / count).toFixed(1)) : 0);
+                otherCounts.push(count > 0 ? parseFloat((otherSum / count).toFixed(1)) : 0);
             });
 
             return { tracking: trackingCounts, other: otherCounts };
@@ -155,20 +157,21 @@ export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges
             return Math.max(...d.tracking.map((t, i) => t + d.other[i]));
         };
 
-        const maxActive = getMaxValue(activeData);
-        const maxInactive = getMaxValue(inactiveData);
+        // Use Math.ceil to handle decimals for the axis max
+        const maxActive = Math.ceil(getMaxValue(activeData));
+        const maxInactive = Math.ceil(getMaxValue(inactiveData));
         const globalMax = Math.max(maxActive, maxInactive);
 
         // Chart 1: JS Active
         const ctxActive = this.canvasJsActive.first?.nativeElement.getContext('2d');
         if (ctxActive) {
-            this.createStackedChart(ctxActive, 'Cookies (JS Active)', browsers, activeData, browserColors, browserColorsTransparent, globalMax);
+            this.createStackedChart(ctxActive, 'Average Cookies (JS Enabled)', browsers, activeData, browserColors, browserColorsTransparent, globalMax);
         }
 
         // Chart 2: JS Inactive
         const ctxInactive = this.canvasJsInactive.first?.nativeElement.getContext('2d');
         if (ctxInactive) {
-            this.createStackedChart(ctxInactive, 'Cookies (JS Inactive)', browsers, inactiveData, browserColors, browserColorsTransparent, globalMax);
+            this.createStackedChart(ctxInactive, 'Average Cookies (JS Disabled)', browsers, inactiveData, browserColors, browserColorsTransparent, globalMax);
         }
     }
 
@@ -191,14 +194,14 @@ export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges
                         data: data.tracking,
                         backgroundColor: colorsSolid,
                         stack: 'stack0',
-                        minBarLength: 5 // Ensure visibility of small values
+                        minBarLength: 5
                     },
                     {
                         label: 'Other Cookies',
                         data: data.other,
                         backgroundColor: colorsTransparent,
                         stack: 'stack0',
-                        minBarLength: 5 // Ensure visibility of small values
+                        minBarLength: 5
                     }
                 ]
             },
@@ -216,7 +219,7 @@ export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges
                             generateLabels: (chart) => {
                                 const original = ChartJS.defaults.plugins.legend.labels.generateLabels(chart);
                                 original.forEach(label => {
-                                    if (label.text === 'Tracking Cookies') label.fillStyle = 'gray'; // Neutral color for legend
+                                    if (label.text === 'Tracking Cookies') label.fillStyle = 'gray';
                                     if (label.text === 'Other Cookies') label.fillStyle = 'lightgray';
                                 });
                                 return original;
@@ -230,7 +233,14 @@ export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges
                     },
                     tooltip: {
                         mode: 'index',
-                        intersect: false
+                        intersect: false,
+                        callbacks: {
+                            footer: (tooltipItems) => {
+                                let sum = 0;
+                                tooltipItems.forEach(t => sum += (t.parsed.y || 0));
+                                return `Total Avg: ${sum.toFixed(1)}`;
+                            }
+                        }
                     },
                     datalabels: {
                         display: true,
@@ -247,7 +257,7 @@ export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges
                         beginAtZero: true,
                         grace: '10%',
                         suggestedMax: maxY,
-                        title: { display: true, text: 'Number of Cookies' },
+                        title: { display: true, text: 'Avg Cookies' },
                         ticks: { stepSize: 1 }
                     },
                     x: {

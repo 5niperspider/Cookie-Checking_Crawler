@@ -7,7 +7,7 @@ import { CookiesByDomainChartComponent } from '../components/cookies-by-domain-c
 import { CookieTableComponent } from '../components/cookie-table.component';
 import { SessionSummaryChartComponent } from '../components/session-summary-chart.component';
 
-import { TxtFileUploadComponent } from './txt-file-upload/txt-file-upload';
+
 
 @Component({
   selector: 'app-analytics-dashboard',
@@ -19,7 +19,6 @@ import { TxtFileUploadComponent } from './txt-file-upload/txt-file-upload';
     CookiesByDomainChartComponent,
     CookieTableComponent,
     SessionSummaryChartComponent,
-    TxtFileUploadComponent
   ],
   template: `
     <div class="dashboard-container">
