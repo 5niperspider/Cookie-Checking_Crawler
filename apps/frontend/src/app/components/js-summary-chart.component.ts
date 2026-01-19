@@ -68,7 +68,7 @@ ChartJS.register(
         }
         .chart-inner {
             position: relative;
-            height: 300px;
+            height: 450px;
         }
         h3 {
             text-align: center;
@@ -108,60 +108,99 @@ export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges
         const browsers = ['Chrome', 'Firefox', 'Brave'];
         const browserKeys = ['chrome', 'firefox', 'brave'];
         const browserColors = ['#FF6384', '#36A2EB', '#FF9F40'];
+        const browserColorsTransparent = ['rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(255, 159, 64, 0.5)'];
 
-        // Helper: Count Cookies
+        // Helper: Count Cookies Split by Tracking vs Other
         const countCookies = (jsEnabled: boolean) => {
-            return browsers.map((browserLabel, bIdx) => {
+            const trackingCounts: number[] = [];
+            const otherCounts: number[] = [];
+
+            browsers.forEach((_, bIdx) => {
                 const browserKey = browserKeys[bIdx];
 
-                // 1. Filter sessions for this browser & JS state
                 const targetSessions = this.sessions.filter(s =>
                     s.browser?.toLowerCase() === browserKey &&
                     s.jsEnabled === jsEnabled
                 );
 
-                // 2. Sum cookies from analyticsData for these sessions
-                let totalCookies = 0;
+                let trackingSum = 0;
+                let otherSum = 0;
+
                 targetSessions.forEach(session => {
                     const data = this.analyticsData[session.id];
                     if (data) {
-                        const firstParty = (data.firstparty?.nontracking?.length || 0) + (data.firstparty?.tracking?.length || 0);
-                        const thirdParty = data.thirdparty?.length || 0;
-                        totalCookies += (firstParty + thirdParty);
+                        // Tracking = FirstParty Tracking + ThirdParty
+                        const tracking = (data.firstparty?.tracking?.length || 0) + (data.thirdparty?.length || 0);
+                        // Other = FirstParty NonTracking
+                        const other = (data.firstparty?.nontracking?.length || 0);
+
+                        trackingSum += tracking;
+                        otherSum += other;
                     }
                 });
 
-                return totalCookies;
+                trackingCounts.push(trackingSum);
+                otherCounts.push(otherSum);
             });
+
+            return { tracking: trackingCounts, other: otherCounts };
         };
 
-        const activeCounts = countCookies(true);
-        const inactiveCounts = countCookies(false);
+        const activeData = countCookies(true);
+        const inactiveData = countCookies(false);
+
+        // Calculate Global Max for Y-Axis
+        const getMaxValue = (d: { tracking: number[], other: number[] }) => {
+            if (!d.tracking.length) return 0;
+            return Math.max(...d.tracking.map((t, i) => t + d.other[i]));
+        };
+
+        const maxActive = getMaxValue(activeData);
+        const maxInactive = getMaxValue(inactiveData);
+        const globalMax = Math.max(maxActive, maxInactive);
 
         // Chart 1: JS Active
         const ctxActive = this.canvasJsActive.first?.nativeElement.getContext('2d');
         if (ctxActive) {
-            this.createChart(ctxActive, 'Cookies (JS Active)', browsers, activeCounts, browserColors);
+            this.createStackedChart(ctxActive, 'Cookies (JS Active)', browsers, activeData, browserColors, browserColorsTransparent, globalMax);
         }
 
         // Chart 2: JS Inactive
         const ctxInactive = this.canvasJsInactive.first?.nativeElement.getContext('2d');
         if (ctxInactive) {
-            this.createChart(ctxInactive, 'Cookies (JS Inactive)', browsers, inactiveCounts, browserColors);
+            this.createStackedChart(ctxInactive, 'Cookies (JS Inactive)', browsers, inactiveData, browserColors, browserColorsTransparent, globalMax);
         }
     }
 
-    private createChart(ctx: CanvasRenderingContext2D, title: string, labels: string[], data: number[], colors: string[]) {
+    private createStackedChart(
+        ctx: CanvasRenderingContext2D,
+        title: string,
+        labels: string[],
+        data: { tracking: number[], other: number[] },
+        colorsSolid: string[],
+        colorsTransparent: string[],
+        maxY: number
+    ) {
         const chart = new ChartJS(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
-                datasets: [{
-                    label: 'Total Cookies',
-                    data: data,
-                    backgroundColor: colors,
-                    borderWidth: 1
-                }]
+                datasets: [
+                    {
+                        label: 'Tracking Cookies',
+                        data: data.tracking,
+                        backgroundColor: colorsSolid,
+                        stack: 'stack0',
+                        minBarLength: 5 // Ensure visibility of small values
+                    },
+                    {
+                        label: 'Other Cookies',
+                        data: data.other,
+                        backgroundColor: colorsTransparent,
+                        stack: 'stack0',
+                        minBarLength: 5 // Ensure visibility of small values
+                    }
+                ]
             },
             options: {
                 responsive: true,
@@ -170,25 +209,49 @@ export class JsSummaryChartComponent implements OnInit, AfterViewInit, OnChanges
                     padding: { top: 30 }
                 },
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            generateLabels: (chart) => {
+                                const original = ChartJS.defaults.plugins.legend.labels.generateLabels(chart);
+                                original.forEach(label => {
+                                    if (label.text === 'Tracking Cookies') label.fillStyle = 'gray'; // Neutral color for legend
+                                    if (label.text === 'Other Cookies') label.fillStyle = 'lightgray';
+                                });
+                                return original;
+                            }
+                        }
+                    },
                     title: {
                         display: true,
                         text: title,
                         padding: { bottom: 20 }
                     },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    },
                     datalabels: {
                         display: true,
-                        anchor: 'end',
-                        align: 'top',
-                        font: { weight: 'bold' }
+                        color: 'black',
+                        font: { weight: 'bold' },
+                        formatter: (value: number) => {
+                            return value > 0 ? value : '';
+                        }
                     } as Record<string, unknown>
                 },
                 scales: {
                     y: {
+                        stacked: true,
                         beginAtZero: true,
                         grace: '10%',
+                        suggestedMax: maxY,
                         title: { display: true, text: 'Number of Cookies' },
                         ticks: { stepSize: 1 }
+                    },
+                    x: {
+                        stacked: true
                     }
                 }
             }
