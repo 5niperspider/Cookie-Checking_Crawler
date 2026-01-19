@@ -37,7 +37,7 @@ export class AnalyticsService {
 
   private loadTrackingPatterns(): string[] {
     try {
-      // Versuche mehrere mögliche Pfade, da __dirname je nach Laufzeitumgebung variiert
+      // Versuch das patter.csv file aus verschiedenen möglichen Pfaden zu laden
       const possiblePaths = [
         path.join(__dirname, 'analytics', 'patter.csv'),
         path.join(__dirname, '..', 'analytics', 'patter.csv'),
@@ -45,6 +45,7 @@ export class AnalyticsService {
         path.join(process.cwd(), 'apps', 'api', 'src', 'app', 'analytics', 'patter.csv'),
       ];
 
+      // Finde den ersten existierenden Pfad
       let filePath = '';
       for (const p of possiblePaths) {
         if (fs.existsSync(p)) {
@@ -53,10 +54,12 @@ export class AnalyticsService {
         }
       }
 
+      // Wenn keine Datei gefunden wurde, Fehler werfen
       if (!filePath) {
         throw new Error(`patter.csv not found in any of: ${possiblePaths.join(', ')}`);
       }
 
+      // Lese die Datei und extrahiere die Muster
       const data = fs.readFileSync(filePath, 'utf-8');
       const lines = data.split('\n').filter(line => line.trim());
       return lines.map(line => line.split(',')[0].trim()).filter(pattern => pattern);
@@ -66,17 +69,21 @@ export class AnalyticsService {
     }
   }
 
+  // Hauptmethode zur Analyse der Cookies
   async getAnalytics(): Promise<AnalyticsResult> {
     try {
+      // Hole alle Sitzungen aus der Datenbank
       const sessions = await this.dbService.getAllSessions();
       if (!sessions || sessions.length === 0) {
         this.logger.debug('No sessions found');
         return {};
       }
 
+      // Verarbeite jede Sitzung
       this.logger.debug(`Processing ${sessions.length} sessions for analytics`);
       const result: AnalyticsResult = {};
 
+      // Für jede Sitzung die Cookies abrufen und klassifizieren
       for (const session of sessions) {
         const cookies = (await this.dbService.getCookiesForSession(session.id)) || [];
         this.logger.debug(
@@ -88,11 +95,13 @@ export class AnalyticsService {
 
       return result;
     } catch (error) {
+      // Logge den Fehler und gib ein leeres Ergebnis zurück
       this.logger.error(`Error fetching analytics: ${error.message}`);
       return {};
     }
   }
 
+  // Hilfsmethode zur Klassifizierung der Cookies
   private classifyCookies(
     cookies: Cookie[],
     sessionUrl: string,
@@ -105,9 +114,11 @@ export class AnalyticsService {
       thirdparty: [],
     };
 
+    // Iteriere über alle Cookies und klassifiziere sie
     for (const cookie of cookies) {
       const isFirstParty = this.isFirstPartyCookie(cookie.domain, sessionUrl);
 
+      //  Klassifiziere basierend auf First-Party/Third-Party und Tracking/Non-Tracking
       if (isFirstParty) {
         const isTracking = this.isTrackingCookie(cookie);
         if (isTracking) {
@@ -123,6 +134,7 @@ export class AnalyticsService {
     return result;
   }
 
+  // Hilfsmethode zur Bestimmung, ob ein Cookie First-Party ist
   private isFirstPartyCookie(cookieDomain: string, sessionUrl: string): boolean {
     try {
       // Stelle sicher, dass die URL ein Schema hat
@@ -192,8 +204,8 @@ export class AnalyticsService {
     }
   }
 
+  // Hilfsmethode zur Bestimmung, ob ein Cookie ein Tracking-Cookie ist
   private isTrackingCookie(cookie: Cookie): boolean {
-    // Placeholder: später mit Pattern-Matching und anderen Verfahren erweitern
     const cookieName = cookie.name.toLowerCase();
     return this.trackingPatterns.some((pattern) => cookieName.includes(pattern.toLowerCase()));
   }
