@@ -8,6 +8,7 @@ import { AnalyticsController } from './analytics/analytics.controller';
 import { SessionsModul } from './sessions/sessions.module';
 import { CrawlerConfigService } from './crawler.config';
 
+// Main application module
 @Module({
   imports: [CookiesModule, SessionsModul],
   controllers: [AnalyticsController],

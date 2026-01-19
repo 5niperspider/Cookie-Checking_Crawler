@@ -1,4 +1,3 @@
-// apps/api/src/crawler.config.ts
 import { Injectable } from '@nestjs/common';
 import { DbService, Config } from './db/db.service';
 import { Page, ElementHandle } from 'puppeteer';
@@ -29,12 +28,14 @@ export interface CrawlerConfig {
   jsEnabled: boolean;
 }
 
+// Service to manage crawler configurations and cookie banner handling
 @Injectable()
 export class CrawlerConfigService {
   private BROWSER_CONFIGS: Record<BrowserType, BrowserConfig>;
   private TIMEOUTS: Timeouts;
   private COOKIE_BANNER_SELECTORS: CookieBannerSelectors;
 
+  // Initialize default configurations
   constructor(private readonly dbService: DbService) {
     this.BROWSER_CONFIGS = {
       chrome: {
@@ -73,12 +74,14 @@ export class CrawlerConfigService {
       },
     };
 
+    // Define timeouts for various operations
     this.TIMEOUTS = {
       navigation: 30000,
       waitForSelector: 10000,
       cookieBanner: 5000,
     };
 
+    // Define selectors for cookie banner buttons
     this.COOKIE_BANNER_SELECTORS = {
       accept: [
         '[data-testid="banner-accept-all-button"]',
@@ -174,27 +177,32 @@ export class CrawlerConfigService {
     };
   }
 
+  // Fetch configuration from the database and map to CrawlerConfig
   async getConfigFromDatabase(configId: number): Promise<CrawlerConfig> {
     const dbConfig = await this.dbService.getConfigById(configId);
     if (!dbConfig) throw new Error(`Config with ID ${configId} not found`);
     return this._mapDbConfigToCrawlerConfig(dbConfig);
   }
 
+  // Handle cookie banner based on the specified strategy
   async handleCookieBanner(page: Page, config: CrawlerConfig): Promise<void> {
     if (!config.jsEnabled) {
       console.log('JS disabled – skipping cookie banner handling');
       return;
     }
     console.log('Waiting for cookie banner...');
+    // Check for the presence of a cookie banner
     const bannerExists = await this.waitForCookieBanner(page, this.TIMEOUTS.cookieBanner);
     if (!bannerExists) {
       console.log('No cookie banner detected');
       return;
     }
     console.log('Cookie banner detected');
+    // Try to find and click the appropriate button using selectors
     const selectors = this.COOKIE_BANNER_SELECTORS[config.cookieStrategy];
     const button = await this.findBestButton(page, selectors);
     if (button) {
+      // Click the button if found via selectors
       await this.safeClick(button);
       console.log(`Clicked ${config.cookieStrategy} via selector`);
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -203,6 +211,7 @@ export class CrawlerConfigService {
       }
       return;
     }
+    // If no button found via selectors, try clicking by text
     const textClicked = await this.clickButtonByText(page, config.cookieStrategy);
     if (textClicked) {
       console.log(`Clicked ${config.cookieStrategy} via text`);
@@ -215,6 +224,7 @@ export class CrawlerConfigService {
     }
   }
 
+  // Handle the cookie preferences dialog for optional cookies
   private async handleCookiePreferences(page: Page): Promise<void> {
     console.log('Handling cookie preferences dialog...');
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -235,11 +245,14 @@ export class CrawlerConfigService {
       '[class*="toggle"][class*="marketing"]',
     ];
 
+    // Iterate through toggle selectors and disable checked options
     let toggledCount = 0;
     for (const selector of toggleSelectors) {
       try {
+        // Find all matching toggle elements
         const elements = await page.$$(selector);
         for (const element of elements) {
+          // Check if the toggle is currently checked/enabled
           const isChecked = await element.evaluate((el: Element) => {
             if (el instanceof HTMLInputElement) {
               return el.checked;
@@ -250,6 +263,7 @@ export class CrawlerConfigService {
             return false;
           });
           
+          // Click to disable if it is checked
           if (isChecked) {
             await this.safeClick(element);
             toggledCount++;
@@ -279,16 +293,20 @@ export class CrawlerConfigService {
       '[data-testid*="confirm"]',
     ];
     
+    //  Iterate through save button selectors and click the first visible one
     for (const selector of saveSelectors) {
       try {
+        // Find the button element
         const button = await page.$(selector);
         if (button) {
+          // Check if the button is visible
           const isVisible = await button.evaluate((el: Element) => {
             if (!(el instanceof HTMLElement)) return false;
             const style = window.getComputedStyle(el);
             return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
           });
           
+          //  Click the button if it is visible
           if (isVisible) {
             await this.safeClick(button);
             console.log('Clicked save/confirm button in preferences dialog');
@@ -303,10 +321,13 @@ export class CrawlerConfigService {
     
     console.log('No save/confirm button found in preferences dialog');
   }
+  // Wait for the cookie banner to appear on the page
   private async waitForCookieBanner(page: Page, timeout: number): Promise<boolean> {
     try {
+      // Wait for known cookie banner indicators or elements
       await page.waitForFunction(
         () => {
+          // Check for known global objects indicating cookie banners
           if (
             window['OneTrust'] ||
             window['UC_UI'] ||
@@ -316,20 +337,25 @@ export class CrawlerConfigService {
           ) {
             return true;
           }
+          // Check for visible elements containing cookie-related keywords
           const keywords = ['cookie', 'consent', 'gdpr', 'datenschutz'];
           const elements = Array.from(document.querySelectorAll(
             'div, section, aside, [role="dialog"], [role="banner"]',
           ));
 
+          // Iterate through elements to find a visible cookie banner
           for (const el of elements) {
+            // Check element size and visibility
             const rect = el.getBoundingClientRect();
             const style = window.getComputedStyle(el);
+            // Look for keywords in the text content
             if (
               rect.height > 50 &&
               rect.width > 200 &&
               style.display !== 'none' &&
               style.visibility !== 'hidden'
             ) {
+              // Check for keywords in text content
               const text = el.textContent?.toLowerCase() || '';
               if (el.querySelector('button') && keywords.some(k => text.includes(k))) {
                 return true;
@@ -345,6 +371,8 @@ export class CrawlerConfigService {
       return false;
     }
   }
+
+  // Find the best matching button based on provided selectors
   private async findBestButton(
     page: Page,
     selectors: string[],
@@ -352,8 +380,10 @@ export class CrawlerConfigService {
     const bestSelector = await page.evaluate((selectorList) => {
       let best: { selector: string; score: number } | null = null;
 
+      // Iterate through each selector to find the best matching button
       for (const selector of selectorList) {
         try {
+          // Find all elements matching the selector
           document.querySelectorAll(selector).forEach(el => {
             const rect = el.getBoundingClientRect();
             const style = window.getComputedStyle(el);
@@ -379,12 +409,16 @@ export class CrawlerConfigService {
 
     return bestSelector ? page.$(bestSelector) : null;
   }
+
+  // Safely click a button by scrolling it into view first
   private async safeClick(button: ElementHandle): Promise<void> {
     await button.evaluate(el =>
       el.scrollIntoView({ behavior: 'instant', block: 'center' }),
     );
     await button.evaluate(el => (el as HTMLElement).click());
   }
+
+  // Click a button based on its text content
   private async clickButtonByText(
     page: Page,
     strategy: CookieStrategy,
@@ -395,8 +429,10 @@ export class CrawlerConfigService {
       optional: ['settings', 'preferences', 'einstellungen'],
     };
     
+    // Execute in page context to find and click button by text
     return page.evaluate((labels) => {
       const buttons = Array.from(document.querySelectorAll('button, [role="button"], a'));
+      // Iterate through labels to find a matching button
       for (const label of labels) {
         const btn = buttons.find(b =>
           b.textContent?.toLowerCase().includes(label),
@@ -410,14 +446,17 @@ export class CrawlerConfigService {
     }, texts[strategy]);
   }
 
+  // Map database configuration to CrawlerConfig
   private _mapDbConfigToCrawlerConfig(dbConfig: Config): CrawlerConfig {
     const browserType = dbConfig.browser as BrowserType;
     const baseBrowserConfig = this.BROWSER_CONFIGS[browserType];
+    // Validate browser type
     if (!baseBrowserConfig) throw new Error(`Unknown browser ${browserType}`);
     
     const jsEnabled = dbConfig.js;
     const browserConfig = this._applyJsSettings(baseBrowserConfig, browserType, jsEnabled);
 
+    // Return the complete crawler configuration
     return {
       browser: browserType,
       browserConfig,
@@ -428,11 +467,13 @@ export class CrawlerConfigService {
     };
   }
 
+  // Apply JavaScript settings to browser configuration
   private _applyJsSettings(
     config: BrowserConfig,
     browser: BrowserType,
     jsEnabled: boolean
   ): BrowserConfig {
+    // For Chrome and Brave, disable JavaScript via command line args
     if (browser === 'firefox' && !jsEnabled) {
       // For Firefox, disable JavaScript through preferences
       return {
@@ -447,6 +488,7 @@ export class CrawlerConfigService {
     return config;
   }
 
+  // Map database cookie strategy to internal representation
   private _mapDbCookieStrategy(dbCookies: 'yes' | 'no' | 'opt'): CookieStrategy {
     if (dbCookies === 'yes') return 'accept';
     if (dbCookies === 'no') return 'reject';
@@ -454,10 +496,13 @@ export class CrawlerConfigService {
     throw new Error(`Unknown cookie strategy ${dbCookies}`);
   }
 
+  // Get the executable path for Brave browser based on the OS
   private _getBraveExecutablePath(): string {
+    // Determine the default installation path for Brave browser
     if (process.platform === 'win32') {
       return 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe';
     }
+    //  Linux and macOS paths
     if (process.platform === 'linux') {
       return '/usr/bin/brave-browser';
     }
