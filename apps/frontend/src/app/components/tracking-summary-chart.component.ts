@@ -24,12 +24,12 @@ ChartJS.register(
 );
 
 @Component({
-    selector: 'app-session-summary-chart',
+    selector: 'app-tracking-summary-chart',
     standalone: true,
     imports: [CommonModule],
     template: `
         <div class="chart-container">
-            <h3>Sessions summary all cookies</h3>
+            <h3>Summary of the tracking cookies</h3>
             <div class="chart-wrapper">
                 <canvas #canvas></canvas>
             </div>
@@ -57,7 +57,7 @@ ChartJS.register(
         `,
     ],
 })
-export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnChanges {
+export class TrackingSummaryChartComponent implements OnInit, AfterViewInit, OnChanges {
     @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
     @Input() sessions: CrawlSession[] = [];
 
@@ -121,9 +121,9 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                 group.forEach(session => {
                     const classified = this.analyticsData[String(session.id)];
                     if (classified) {
+                        // Calculate ONLY tracking cookies (First-party Tracking + Third-party)
                         const count = 
                             (classified.firstparty?.tracking?.length || 0) +
-                            (classified.firstparty?.nontracking?.length || 0) +
                             (classified.thirdparty?.length || 0);
                         totalCookies += count;
                     }
@@ -153,7 +153,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: {
+                 layout: {
                     padding: {
                         top: 30
                     }
@@ -161,7 +161,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Average Cookies per Session',
+                        text: 'Average Tracking Cookies per Session',
                         padding: {
                             bottom: 20
                         }
@@ -192,7 +192,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                         grace: '10%',
                         title: {
                             display: true,
-                            text: 'Avg Cookies'
+                            text: 'Avg Tracking Cookies'
                         }
                     },
                     x: {

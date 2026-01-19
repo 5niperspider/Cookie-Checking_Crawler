@@ -227,17 +227,7 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
     }
 
     ngOnChanges(): void {
-        this.groupedSessions = [
-            {
-                category: 'Accepted',
-                sessions: this.sessions.filter(s => s.cookieBannerHandled)
-            },
-            {
-                category: 'Ignored/Rejected',
-                sessions: this.sessions.filter(s => !s.cookieBannerHandled)
-            }
-        ];
         // Give ViewChild time to update
-        setTimeout(() => this.drawCharts(), 0);
+        setTimeout(() => this.renderCharts(), 0);
     }
 }
