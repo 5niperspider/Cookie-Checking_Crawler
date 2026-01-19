@@ -3,10 +3,10 @@ import { CommonModule } from '@angular/common';
 import { Cookie } from '../services/cookie.service';
 
 @Component({
-    selector: 'app-cookie-table',
-    standalone: true,
-    imports: [CommonModule],
-    template: `
+  selector: 'app-cookie-table',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
     <div class="table-container">
       <h3>Raw Cookie Data</h3>
       <table *ngIf="cookies.length > 0; else noData">
@@ -42,7 +42,7 @@ import { Cookie } from '../services/cookie.service';
       </ng-template>
     </div>
   `,
-    styles: [`
+  styles: [`
     .table-container {
       margin-top: 30px;
       overflow-x: auto;
@@ -59,6 +59,7 @@ import { Cookie } from '../services/cookie.service';
     .no-data { color: #666; font-style: italic; }
   `]
 })
+// CookieTableComponent
 export class CookieTableComponent {
-    @Input() cookies: Cookie[] = [];
+  @Input() cookies: Cookie[] = [];
 }

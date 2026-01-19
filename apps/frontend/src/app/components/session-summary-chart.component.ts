@@ -29,7 +29,7 @@ ChartJS.register(
     imports: [CommonModule],
     template: `
         <div class="chart-container">
-            <h3>Sessions by Cookie Acceptance (Average Cookies per Session)</h3>
+            <h3>Sessions summary all cookies</h3>
             <div class="chart-wrapper">
                 <canvas #canvas></canvas>
             </div>
@@ -57,6 +57,7 @@ ChartJS.register(
         `,
     ],
 })
+// Chart component for comparing cookies with JS enabled vs disabled
 export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnChanges {
     @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
     @Input() sessions: CrawlSession[] = [];
@@ -77,6 +78,7 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
         this.renderChart();
     }
 
+    // Load analytics data
     private loadAnalyticsData() {
         this.analyticsService.getAnalytics().subscribe({
             next: (data) => {
@@ -89,37 +91,92 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
         });
     }
 
+    // Render chart
     private renderChart() {
         if (!this.canvasRef || !this.sessions.length) return;
 
         const ctx = this.canvasRef.nativeElement.getContext('2d');
         if (!ctx) return;
 
-        // Kategorisiere Sessions basierend auf cookieBannerHandled
-        const acceptedSessions = this.sessions.filter(s => s.cookieBannerHandled === 'yes');
-        const rejectedSessions = this.sessions.filter(s => s.cookieBannerHandled === 'no');
-        const optionalSessions = this.sessions.filter(s => s.cookieBannerHandled === 'opt');
+        // Categories (X-Axis)
+        const categories = ['Ablehnen', 'Akzeptieren', 'Optional'];
+        const configValues = ['no', 'yes', 'opt'] as const;
 
-        // Berechne durchschnittliche Cookie-Counts pro Kategorie
-        const categories = ['Accepted (yes)', 'Rejected (no)', 'Optional (opt)'];
-        const sessionGroups = [acceptedSessions, rejectedSessions, optionalSessions];
+        // Browsers (Datasets)
+        const browsers = ['Chrome', 'Firefox', 'Brave'];
+        const browserKeys = ['chrome', 'firefox', 'brave'];
+        // Colors: Chrome (Pink), Firefox (Blue), Brave (Orange)
+        // Solid for Tracking, Transparent/Light for Other
+        const browserColors = ['#FF6384', '#36A2EB', '#FF9F40'];
+        const browserColorsLight = ['#FF638480', '#36A2EB80', '#FF9F4080']; // 50% opacity
 
-        const averageCookies = sessionGroups.map(group => {
-            if (group.length === 0) return 0;
-            let totalCookies = 0;
+        const datasets: any[] = [];
 
-            group.forEach(session => {
-                const classified = this.analyticsData[session.id as unknown as number];
-                if (classified) {
-                    const count = 
-                        classified.firstparty.tracking.length +
-                        classified.firstparty.nontracking.length +
-                        classified.thirdparty.length;
-                    totalCookies += count;
-                }
+        browsers.forEach((browserLabel, browserIndex) => {
+            const browserKey = browserKeys[browserIndex];
+
+            // 1. Data for "Tracking Cookies" (Bottom of stack)
+            const trackingData = configValues.map(configValue => {
+                const group = this.sessions.filter(s =>
+                    s.browser?.toLowerCase() === browserKey &&
+                    s.cookieBannerHandled === configValue
+                );
+                if (group.length === 0) return 0;
+
+                let sum = 0;
+                group.forEach(session => {
+                    const classified = this.analyticsData[String(session.id)];
+                    if (classified) {
+                        // Tracking = First-party Tracking + Third-party
+                        const count =
+                            (classified.firstparty?.tracking?.length || 0) +
+                            (classified.thirdparty?.length || 0);
+                        sum += count;
+                    }
+                });
+                return parseFloat((sum / group.length).toFixed(1));
             });
 
-            return parseFloat((totalCookies / group.length).toFixed(1));
+            // 2. Data for "Other Cookies" (Top of stack)
+            const otherData = configValues.map(configValue => {
+                const group = this.sessions.filter(s =>
+                    s.browser?.toLowerCase() === browserKey &&
+                    s.cookieBannerHandled === configValue
+                );
+                if (group.length === 0) return 0;
+
+                let sum = 0;
+                group.forEach(session => {
+                    const classified = this.analyticsData[String(session.id)];
+                    if (classified) {
+                        // Other = First-party Non-tracking
+                        const count = (classified.firstparty?.nontracking?.length || 0);
+                        sum += count;
+                    }
+                });
+                return parseFloat((sum / group.length).toFixed(1));
+            });
+
+            // Push datasets
+            // Tracking 
+            datasets.push({
+                label: `${browserLabel} (Tracking)`,
+                data: trackingData,
+                backgroundColor: browserColors[browserIndex],
+                stack: browserKey, // Stack Group
+                barPercentage: 0.8,
+                categoryPercentage: 0.9
+            });
+
+            // Other 
+            datasets.push({
+                label: `${browserLabel} (Other)`,
+                data: otherData,
+                backgroundColor: browserColorsLight[browserIndex],
+                stack: browserKey, // Stack Group
+                barPercentage: 0.8,
+                categoryPercentage: 0.9
+            });
         });
 
         if (this.chartInstance) {
@@ -130,30 +187,80 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
             type: 'bar',
             data: {
                 labels: categories,
-                datasets: [
-                    {
-                        label: 'Average Cookies per Session',
-                        data: averageCookies,
-                        backgroundColor: ['#36A2EB', '#FF6384', '#FFCD56'],
-                    }
-                ],
+                datasets: datasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 30
+                    }
+                },
                 plugins: {
                     title: {
-                        display: false
+                        display: true,
+                        text: 'Average Cookies (Tracking vs Other)',
+                        padding: {
+                            bottom: 20
+                        }
                     },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
+                        filter: (item) => {
+                            // Only show the "Tracking" entry, but we'll sum the "Other" value into it
+                            return item.dataset.label ? !item.dataset.label.includes('(Other)') : true;
+                        },
+                        callbacks: {
+                            label: (context) => {
+                                const label = context.dataset.label || '';
+                                // "Chrome (Tracking)" -> "Chrome"
+                                const browserName = label.replace(' (Tracking)', '');
+
+                                // Get Tracking value
+                                const valTracking = context.parsed.y || 0;
+
+                                // Get Other value (from sibling dataset)
+                                let valOther = 0;
+                                const otherLabel = `${browserName} (Other)`;
+                                context.chart.data.datasets.forEach(ds => {
+                                    if (ds.label === otherLabel) {
+                                        valOther = ds.data[context.dataIndex] as number || 0;
+                                    }
+                                });
+
+                                const total = valTracking + valOther;
+                                // Match screenshot format (comma for decimal) if desired, but standard is fine.
+                                // Screenshot had "2,8". Let's try to match it.
+                                return `${browserName}: ${total.toFixed(1).replace('.', ',')}`;
+                            },
+                            footer: (tooltipItems) => {
+                                let sum = 0;
+                                // We need to sum ALL datasets at this index, not just the filtered visible ones
+                                const index = tooltipItems[0].dataIndex;
+                                tooltipItems[0].chart.data.datasets.forEach(ds => {
+                                    sum += (ds.data[index] as number || 0);
+                                });
+                                return 'Total Avg: ' + sum.toFixed(1).replace('.', ',');
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            padding: 20,
+                            filter: (item) => {
+                                return true;
+                            }
+                        }
                     },
                     datalabels: {
                         display: true,
-                        anchor: 'end',
-                        align: 'top',
-                        formatter: (value: number) => value,
+                        anchor: 'center',
+                        align: 'center',
+                        formatter: (value: number) => value > 0 ? value : '',
+                        color: 'black',
                         font: {
                             weight: 'bold'
                         }
@@ -162,12 +269,15 @@ export class SessionSummaryChartComponent implements OnInit, AfterViewInit, OnCh
                 scales: {
                     y: {
                         beginAtZero: true,
+                        grace: '10%',
+                        stacked: true, // Enable stacking on Y
                         title: {
                             display: true,
                             text: 'Avg Cookies'
                         }
                     },
                     x: {
+                        stacked: true, // Enable stacking on X (within groups defined by 'stack')
                         title: {
                             display: true,
                             text: 'Category'

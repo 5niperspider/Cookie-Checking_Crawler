@@ -6,6 +6,8 @@ import { AnalyticsService } from '../services/analytics.service';
 import { CookieOverviewChartComponent } from './cookie-overview-chart.component';
 import { CookiesByDomainChartComponent } from './cookies-by-domain-chart.component';
 import { SessionSummaryChartComponent } from './session-summary-chart.component';
+
+import { JsSummaryChartComponent } from './js-summary-chart.component';
 import { CookieTableComponent } from './cookie-table.component';
 
 @Component({
@@ -17,14 +19,20 @@ import { CookieTableComponent } from './cookie-table.component';
     CookieOverviewChartComponent,
     CookiesByDomainChartComponent,
     CookieTableComponent,
-    SessionSummaryChartComponent
+    SessionSummaryChartComponent,
+
+    JsSummaryChartComponent
   ],
   template: `
     <div class="dashboard-container">
       <!-- GLOBALE Browser-Vergleiche (alle Sessions) -->
       <app-cookies-by-domain-chart [stats]="globalStats" [sessions]="sessions"></app-cookies-by-domain-chart>
       
-      <app-session-summary-chart [sessions]="sessions"></app-session-summary-chart>
+      <div class="summary-charts-row">
+        <app-session-summary-chart [sessions]="sessions"></app-session-summary-chart>
+      </div>
+
+      <app-js-summary-chart [sessions]="sessions" [analyticsData]="analyticsData"></app-js-summary-chart>
 
       <!-- URL Filter -->
       <div class="filters-section">
@@ -78,6 +86,7 @@ import { CookieTableComponent } from './cookie-table.component';
   `,
   styles: [`
     .dashboard-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .summary-charts-row { margin-bottom: 20px; }
     .filters-section { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
     .filter-group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .filter-group label { font-weight: 500; min-width: 120px; }
@@ -91,16 +100,18 @@ import { CookieTableComponent } from './cookie-table.component';
     .chart-wrapper { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; }
   `]
 })
+
+// AnalyticsDashboardComponentS
 export class AnalyticsDashboardComponent implements OnInit {
   sessions: CrawlSession[] = [];
   selectedUrl = '';
   uniqueUrls: string[] = [];
-  
+
   // Signals für URL-Daten
   filteredSessions = signal<CrawlSession[]>([]);
   urlStats = signal<any>(null);
   urlCookies = signal<any[]>([]);
-  
+
   // Globale Daten
   globalStats: any = null;
   analyticsData: any = {};
@@ -108,10 +119,12 @@ export class AnalyticsDashboardComponent implements OnInit {
   private cookieService = inject(CookieService);
   private analyticsService = inject(AnalyticsService);
 
+  // Initialisierung
   ngOnInit() {
     this.loadAllData();
   }
 
+  // Sessions und AnalyticsData laden
   private loadAllData() {
     // 1. Sessions laden
     this.cookieService.getSessions().subscribe({
@@ -135,15 +148,17 @@ export class AnalyticsDashboardComponent implements OnInit {
     });
   }
 
+  // Unique URLs aktualisieren
   private updateUniqueUrls() {
     this.uniqueUrls = Array.from(new Set(this.sessions.map(s => s.url))).sort();
   }
 
+  // URL-Filter
   onUrlChange() {
     if (this.selectedUrl) {
       const urlSessions = this.sessions.filter(s => s.url === this.selectedUrl);
       this.filteredSessions.set(urlSessions);
-      
+
       // ← LOKAL berechnen 
       this.urlStats.set(this.calculateStats(urlSessions));
       this.urlCookies.set(this.collectUrlCookies(urlSessions));
@@ -157,14 +172,14 @@ export class AnalyticsDashboardComponent implements OnInit {
   // ← LOKALE Stats-Berechnung
   private calculateStats(sessions: CrawlSession[]): any {
     let total = 0, thirdParty = 0, tracking = 0, firstParty = 0;
-    
+
     sessions.forEach(session => {
       const classified = this.analyticsData[String(session.id)];
       if (classified) {
         const nontracking = classified.firstparty?.nontracking?.length || 0;
         const trackingCookies = classified.firstparty?.tracking?.length || 0;
         const thirdPartyCookies = classified.thirdparty?.length || 0;
-        
+
         total += nontracking + trackingCookies + thirdPartyCookies;
         firstParty += nontracking + trackingCookies;
         thirdParty += thirdPartyCookies;

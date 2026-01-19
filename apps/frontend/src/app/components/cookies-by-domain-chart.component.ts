@@ -29,7 +29,14 @@ ChartJS.register(
     standalone: true,
     imports: [CommonModule],
     template: `
-        <div class="charts-container">
+        <div class="controls">
+            <span class="label">Layout:</span>
+            <div class="btn-group">
+                <button [class.active]="containerLayout === 'row'" (click)="setContainerLayout('row')">Side-by-Side</button>
+                <button [class.active]="containerLayout === 'column'" (click)="setContainerLayout('column')">Stacked</button>
+            </div>
+        </div>
+        <div class="charts-container" [class.stacked-layout]="containerLayout === 'column'">
             <div class="chart-wrapper" *ngFor="let configValue of configValues; let i = index">
                 <h3>Cookies: {{ configValue === 'yes' ? 'Accepted' : configValue === 'no' ? 'Rejected' : 'Optional' }}</h3>
                 <div class="chart-inner">
@@ -39,17 +46,52 @@ ChartJS.register(
         </div>
     `,
     styles: [`
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .label {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .btn-group {
+            display: flex;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .btn-group button {
+            background: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            border-right: 1px solid #ddd;
+        }
+        .btn-group button:last-child {
+            border-right: none;
+        }
+        .btn-group button.active {
+            background: #36A2EB;
+            color: white;
+        }
         .charts-container {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 20px;
             padding: 20px 0;
         }
+        .charts-container.stacked-layout {
+            grid-template-columns: 1fr;
+        }
         .chart-wrapper {
             border: 1px solid #ddd;
             padding: 15px;
             border-radius: 8px;
             background: white;
+            min-width: 0; /* Critical for CSS Grid resizing */
         }
         .chart-inner {
             position: relative;
@@ -68,7 +110,8 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
     @Input() stats?: CookieStats;
     @Input() sessions: CrawlSession[] = [];
 
-    public configValues: Array<'yes' | 'no' | 'opt'> = ['yes', 'no', 'opt'];
+    public configValues: Array<'yes' | 'no' | 'opt'> = ['no', 'yes', 'opt']; // Default order
+    public containerLayout: 'row' | 'column' = 'row';
     private chartInstances: ChartJS[] = [];
     private analyticsData: AnalyticsResult = {};
 
@@ -82,10 +125,16 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
         this.renderCharts();
     }
 
-    ngOnChanges(): void {
-        this.renderCharts();
+    // Set container layout
+    setContainerLayout(layout: 'row' | 'column') {
+        this.containerLayout = layout;
+        // Trigger resize to ensure charts adapt to new container width
+        setTimeout(() => {
+            this.chartInstances.forEach(c => c.resize());
+        }, 0);
     }
 
+    // Load analytics data
     private loadAnalyticsData() {
         this.analyticsService.getAnalytics().subscribe({
             next: (data: AnalyticsResult) => {
@@ -98,133 +147,177 @@ export class CookiesByDomainChartComponent implements OnInit, AfterViewInit, OnC
         });
     }
 
+    // Render charts
     private renderCharts() {
         if (!this.canvasRefs || this.sessions.length === 0) return;
 
         this.chartInstances.forEach(c => c.destroy());
         this.chartInstances = [];
 
-        const browsers = ['chrome', 'firefox', 'brave'] as const;
-        const browserLabels = ['Chrome', 'Firefox', 'Brave'];
-        const browserColors = ['#4285F4', '#FF7139', '#FB542B'];
+        // Browsers & Colors
+        const browsers = ['Chrome', 'Firefox', 'Brave'];
+        const browserKeys = ['chrome', 'firefox', 'brave'];
+        const browserColors = ['#FF6384', '#36A2EB', '#FF9F40'];
 
-        this.canvasRefs.forEach((canvasRef, configIndex) => {
-            const targetConfigValue = this.configValues[configIndex];
-
-            // Filtere Sessions NACH cookieBannerHandled
-            const filteredSessions = this.sessions.filter(
-                s => s.cookieBannerHandled === targetConfigValue
+        // 1. Pre-calculate data for all charts to find Global Max Y
+        const preparedData = this.configValues.map(configValue => {
+            const categorySessions = this.sessions.filter(
+                s => s.cookieBannerHandled === configValue
             );
 
-            if (filteredSessions.length === 0) {
-                const ctx = canvasRef.nativeElement.getContext('2d');
-                if (ctx) {
+            if (categorySessions.length === 0) {
+                return { hasData: false, labels: [], datasets: [] };
+            }
+
+            const uniqueUrls = Array.from(new Set(categorySessions.map(s => s.url))).sort();
+
+            // 2. Create datasets for each browser
+            const datasets = browsers.map((browserLabel, bIdx) => {
+                const browserKey = browserKeys[bIdx];
+                const dataPoints = uniqueUrls.map(url => {
+                    const matchingSessions = categorySessions.filter(s =>
+                        s.url === url && s.browser?.toLowerCase() === browserKey
+                    );
+                    if (matchingSessions.length === 0) return 0;
+
+                    // 3. Calculate total cookies for each URL
+                    let total = 0;
+                    matchingSessions.forEach(sess => {
+                        const classified = (this.analyticsData as any)[String(sess.id)];
+                        if (classified) {
+                            const count =
+                                (classified.firstparty?.nontracking?.length || 0) +
+                                (classified.firstparty?.tracking?.length || 0) +
+                                (classified.thirdparty?.length || 0);
+                            total += count;
+                        }
+                    });
+                    return parseFloat((total / matchingSessions.length).toFixed(1));
+                });
+
+                return {
+                    label: browserLabel,
+                    data: dataPoints,
+                    backgroundColor: browserColors[bIdx],
+                    stack: 'Stack 0',
+                };
+            });
+
+            return { hasData: true, labels: uniqueUrls, datasets };
+        });
+
+        // 4. Find Global Max Y (considering STACKED values)
+        let globalMaxY = 0;
+        preparedData.forEach(item => {
+            if (item.hasData && item.labels.length > 0) {
+                const numBars = item.labels.length;
+                for (let i = 0; i < numBars; i++) {
+                    let totalStackHeight = 0;
+                    item.datasets.forEach(ds => {
+                        totalStackHeight += (ds.data[i] || 0);
+                    });
+                    if (totalStackHeight > globalMaxY) {
+                        globalMaxY = totalStackHeight;
+                    }
+                }
+            }
+        });
+        globalMaxY = Math.ceil(globalMaxY);
+
+        // 5. Render Charts
+        this.canvasRefs.forEach((canvasRef, index) => {
+            const data = preparedData[index];
+            const ctx = canvasRef.nativeElement.getContext('2d');
+
+            if (ctx) {
+                // If no data, render empty chart
+                if (!data.hasData) {
                     this.chartInstances.push(new ChartJS(ctx, {
                         type: 'bar',
                         data: { labels: [], datasets: [] },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    }));
-                }
-                return;
-            }
-
-            // Pro Browser: Total Cookies + Session-Anzahl
-            const totalCookiesPerBrowser = [0, 0, 0];
-            const browserSessionCounts = [0, 0, 0];
-
-            filteredSessions.forEach(session => {
-                const idx = browsers.indexOf(session.browser as typeof browsers[number]);
-                if (idx === -1) return;
-
-                // ← TYPE-FIX: (as any) für String(session.id)
-                const sessionKey = String(session.id);
-                const classified = (this.analyticsData as any)[sessionKey];
-                
-                if (classified) {
-                    const allCookies = [
-                        ...(classified.firstparty?.nontracking || []),
-                        ...(classified.firstparty?.tracking || []),
-                        ...(classified.thirdparty || [])
-                    ];
-                    totalCookiesPerBrowser[idx] += allCookies.length;
-                }
-                browserSessionCounts[idx]++;
-            });
-
-            // Ø Cookies pro Session und Browser
-            const browserAverages = totalCookiesPerBrowser.map((total, idx) =>
-                browserSessionCounts[idx] > 0 ? total / browserSessionCounts[idx] : 0
-            );
-
-            const ctx = canvasRef.nativeElement.getContext('2d');
-            if (!ctx) return;
-
-            const chart = new ChartJS(ctx, {
-                type: 'bar',
-                data: {
-                    labels: browserLabels,
-                    datasets: [{
-                        label: 'Ø Cookies pro Session',
-                        data: browserAverages,
-                        backgroundColor: browserColors,
-                        borderColor: browserColors.map(c => c + 'CC'),
-                        borderWidth: 1
-                    }],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            padding: 12,
-                            titleFont: { size: 14, weight: 'bold' },
-                            bodyFont: { size: 12 },
-                            callbacks: {
-                                title: (context) => {
-                                    const i = context[0].dataIndex;
-                                    const sessions = browserSessionCounts[i];
-                                    const total = totalCookiesPerBrowser[i];
-                                    return `${browserLabels[i]}\n${sessions} Sessions | Total: ${total} cookies`;
-                                },
-                                label: (context) => {
-                                    const avg = context.parsed.y;
-                                    return `Ø ${avg?.toFixed(1)} cookies/Session`;
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    suggestedMax: globalMaxY || 10
                                 }
                             }
-                        },
-                        datalabels: {
-                            display: true,
-                            color: 'black',
-                            font: { weight: 'bold', size: 12 },
-                            formatter: (value: number) => value.toFixed(1)
-                        } as Record<string, unknown>
+                        }
+                    }));
+                    return;
+                }
+
+                // 6. Render Chart  
+                const chart = new ChartJS(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Ø Cookies pro Session',
-                                font: { weight: 'bold' }
-                            },
-                            ticks: { stepSize: 1 }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: { top: 20 }
                         },
-                        x: {
-                            title: {
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { padding: 15 }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    footer: (tooltipItems) => {
+                                        let sum = 0;
+                                        tooltipItems.forEach(t => sum += (t.parsed.y || 0));
+                                        return 'Total Avg: ' + sum.toFixed(1);
+                                    }
+                                }
+                            },
+                            datalabels: {
                                 display: true,
-                                text: 'Browser',
-                                font: { weight: 'bold' }
+                                color: 'black',
+                                font: { weight: 'bold', size: 10 },
+                                formatter: (val: number) => val > 0 ? val : '',
+                                anchor: 'center',
+                                align: 'center'
+                            } as Record<string, unknown>
+                        },
+                        scales: {
+                            x: {
+                                stacked: true,
+                                title: {
+                                    display: true,
+                                    text: 'Website (URL)'
+                                },
+                                ticks: {
+                                    maxRotation: 90,
+                                    minRotation: 90
+                                }
+                            },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                grace: '5%',
+                                suggestedMax: globalMaxY, // <--- Synchronized Y-Axis
+                                title: {
+                                    display: true,
+                                    text: 'Total Cookies'
+                                }
                             }
                         }
-                    },
-                },
-            });
-
-            this.chartInstances.push(chart);
+                    }
+                });
+                this.chartInstances.push(chart);
+            }
         });
+    }
+
+    ngOnChanges(): void {
+        // Give ViewChild time to update
+        setTimeout(() => this.renderCharts(), 0);
     }
 }

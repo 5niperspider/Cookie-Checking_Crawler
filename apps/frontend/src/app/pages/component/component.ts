@@ -19,6 +19,7 @@ interface SessionResponse {
   imports: [FormsModule, CommonModule],
   templateUrl: './component.html',
 })
+// eslint-disable-next-line @angular-eslint/prefer-on-push-component-change-detection
 export class MyComponent {
   url = '';
   result: SessionResponse | null = null;
@@ -27,7 +28,8 @@ export class MyComponent {
 
   // eslint-disable-next-line @angular-eslint/prefer-inject
   constructor(private http: HttpClient) { }
-  
+
+  // eslint-disable-next-line @angular-eslint/prefer-on-push-component-change-detection
   sendRequest() {
     this.loading = true;
     this.error = '';
